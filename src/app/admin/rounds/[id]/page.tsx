@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp } from "@/components/ui/api";
+import { AdminNav, EmptyState, PageHeader } from "@/components/ui/chrome";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -25,22 +26,30 @@ export default function AdminRoundPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-semibold">Round {data?.round.roundNumber}</h1>
-        <p className="text-sm text-mist-300">{data?.round.status}</p>
-        <p className="mt-2 font-mono text-xs">commit {data?.round.serverSeedHash}</p>
-        {data?.round.crashMultiplierBp != null ? (
-          <p className="mt-2">Crash {formatBp(data.round.crashMultiplierBp)}</p>
-        ) : (
-          <p className="mt-2 text-mist-500">Crash point hidden until the round crashes.</p>
-        )}
-        <p className="mt-4 text-xs text-mist-500">{data?.note}</p>
-        <ul className="mt-4 space-y-1 text-sm">
+      <div className="mx-auto max-w-2xl space-y-6">
+        <PageHeader
+          kicker="Ops"
+          title={`Round ${data?.round.roundNumber ?? "—"}`}
+          description={data?.round.status}
+          actions={<AdminNav />}
+        />
+        <div className="card space-y-3 p-5 text-sm">
+          <p className="break-all font-mono text-xs text-brand-muted">commit {data?.round.serverSeedHash}</p>
+          {data?.round.crashMultiplierBp != null ? (
+            <p className="font-mono text-2xl font-semibold">{formatBp(data.round.crashMultiplierBp)}</p>
+          ) : (
+            <p className="text-brand-muted">Crash point hidden until the round crashes.</p>
+          )}
+          <p className="text-xs text-brand-muted">{data?.note}</p>
+        </div>
+        <ul className="space-y-2">
           {data?.events.map((e) => (
-            <li key={e.seq}>
-              {e.seq} {e.type}
+            <li key={e.seq} className="list-row">
+              <span className="tabular-nums text-brand-muted">{e.seq}</span>
+              <span>{e.type}</span>
             </li>
           ))}
+          {(data?.events.length ?? 0) === 0 ? <EmptyState>No events.</EmptyState> : null}
         </ul>
       </div>
     </AppShell>

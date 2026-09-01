@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
+import { AdminNav, PageHeader } from "@/components/ui/chrome";
 import { useParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -31,28 +32,28 @@ export default function AdminUserDetailPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-xl space-y-4">
-        <h1 className="text-2xl font-semibold">{data?.user.publicName}</h1>
-        <p className="text-sm text-mist-300">
-          {data?.user.email} · {data?.user.role} · {data?.balanceCredits} credits
-        </p>
-        <p className="text-xs text-mist-500">Balance cannot be edited here.</p>
-        <form className="space-y-3">
-          <input
-            className="w-full border border-ink-700 bg-ink-900 px-3 py-2 text-sm"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button className="border border-signal-rose px-3 py-2 text-sm text-signal-rose" onClick={(e) => toggle(e, true)}>
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHeader
+          kicker="Ops"
+          title={data?.user.publicName ?? "User"}
+          description={`${data?.user.email ?? ""} · ${data?.user.role ?? ""} · ${data?.balanceCredits ?? "—"} credits. Balance cannot be edited here.`}
+          actions={<AdminNav />}
+        />
+        <form className="card space-y-4 p-5">
+          <label className="label">
+            Reason
+            <input className="field" value={reason} onChange={(e) => setReason(e.target.value)} />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-danger" onClick={(e) => toggle(e, true)}>
               Suspend
             </button>
-            <button className="border border-signal-teal px-3 py-2 text-sm text-signal-teal" onClick={(e) => toggle(e, false)}>
+            <button type="button" className="btn-ghost" onClick={(e) => toggle(e, false)}>
               Reactivate
             </button>
           </div>
         </form>
-        {msg ? <p className="text-sm">{msg}</p> : null}
+        {msg ? <p className="alert-ok">{msg}</p> : null}
       </div>
     </AppShell>
   );

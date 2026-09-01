@@ -66,13 +66,15 @@ export function WithdrawPanel({ onUpdated }: { onUpdated?: () => void }) {
   }
 
   return (
-    <form onSubmit={onWithdraw} className="card scroll-mt-24 space-y-3 p-5" id="withdraw">
-      <h2 className="text-lg font-semibold">Withdraw to M-PESA</h2>
-      <p className="text-sm text-mist-300">
-        Cash wallet only. Free credits cannot be withdrawn. Money leaves your Paystack balance and
-        lands on the phone as M-PESA.
-      </p>
-      <label className="block text-sm text-mist-300">
+    <form onSubmit={onWithdraw} className="card scroll-mt-24 space-y-4 p-5" id="withdraw">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Withdraw to M-PESA</h2>
+        <p className="mt-1 text-sm leading-relaxed text-brand-muted">
+          Cash wallet only. Free credits cannot be withdrawn. Money leaves your Paystack balance and
+          lands on the phone as M-PESA.
+        </p>
+      </div>
+      <label className="label">
         Amount (KES)
         <input
           className="field text-lg"
@@ -83,7 +85,7 @@ export function WithdrawPanel({ onUpdated }: { onUpdated?: () => void }) {
           required
         />
       </label>
-      <label className="block text-sm text-mist-300">
+      <label className="label">
         M-PESA phone
         <input
           className="field"
@@ -96,10 +98,10 @@ export function WithdrawPanel({ onUpdated }: { onUpdated?: () => void }) {
       <button disabled={busy} type="submit" className="btn-primary w-full py-3 text-base">
         {busy ? "Sending payout…" : "Withdraw to M-PESA"}
       </button>
-      {msg ? <p className="text-sm text-signal-teal">{msg}</p> : null}
-      {error ? <p className="text-sm text-signal-rose">{error}</p> : null}
+      {msg ? <p className="alert-ok">{msg}</p> : null}
+      {error ? <p className="alert-error">{error}</p> : null}
       {pending?.status === "PENDING" ? (
-        <p className="text-sm text-signal-amber">Waiting for M-PESA on {pending.phone}…</p>
+        <p className="alert-wait">Waiting for M-PESA on {pending.phone}…</p>
       ) : null}
     </form>
   );

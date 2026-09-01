@@ -44,8 +44,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (!me) {
     return (
-      <div className="grid min-h-[60vh] place-items-center text-mist-300">
-        <p>Loading your dashboard…</p>
+      <div className="grid min-h-[70vh] place-items-center px-4">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-pulse rounded-xl bg-brand-wine" />
+          <p className="mt-4 text-sm font-semibold text-brand-wine">ChapaCash</p>
+          <p className="mt-1 text-sm text-brand-muted">Loading your dashboard…</p>
+        </div>
       </div>
     );
   }
@@ -58,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         cashCredits={me.cashCredits}
         promoCredits={me.promoCredits}
       />
-      <div className="mx-auto max-w-6xl px-4 py-6">{children}</div>
+      <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
     </>
   );
 }

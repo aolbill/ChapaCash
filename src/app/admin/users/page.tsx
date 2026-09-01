@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
+import { AdminNav, EmptyState, PageHeader, StatusBadge } from "@/components/ui/chrome";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -16,20 +17,21 @@ export default function AdminUsersPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold">Users</h1>
-        <ul className="mt-4 space-y-2 text-sm">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader kicker="Ops" title="Users" actions={<AdminNav />} />
+        <ul className="space-y-2">
           {users.map((u) => (
-            <li key={u.id} className="flex justify-between border border-ink-700 px-3 py-2">
-              <Link className="text-signal-teal" href={`/admin/users/${u.id}`}>
+            <li key={u.id} className="list-row">
+              <Link className="link-quiet" href={`/admin/users/${u.id}`}>
                 {u.publicName}
               </Link>
-              <span>
+              <span className="flex items-center gap-2 text-brand-muted">
                 {u.role} · {u.balanceCredits}
-                {u.suspendedAt ? " · suspended" : ""}
+                {u.suspendedAt ? <StatusBadge tone="danger">suspended</StatusBadge> : null}
               </span>
             </li>
           ))}
+          {users.length === 0 ? <EmptyState>No users found.</EmptyState> : null}
         </ul>
       </div>
     </AppShell>

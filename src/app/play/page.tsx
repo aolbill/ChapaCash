@@ -87,15 +87,13 @@ function Slot({
   return (
     <section className="card p-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-mist-300">Bet {slotIndex + 1}</h3>
-        <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[11px] uppercase tracking-wide text-mist-500">
-          {walletKind === "REAL" ? "Cash" : "Free"}
-        </span>
+        <h3 className="text-sm font-semibold text-brand-wine">Bet {slotIndex + 1}</h3>
+        <span className="chip">{walletKind === "REAL" ? "Cash" : "Free"}</span>
       </div>
-      <label className="mt-3 block text-xs uppercase tracking-wide text-mist-500">
+      <label className="label mt-4">
         Stake
         <input
-          className="field mt-1 text-lg font-semibold tabular-nums"
+          className="field text-lg font-semibold tabular-nums"
           value={stake}
           onChange={(e) => setStake(e.target.value.replace(/[^0-9]/g, ""))}
           inputMode="numeric"
@@ -109,17 +107,17 @@ function Slot({
             type="button"
             disabled={Boolean(mine)}
             onClick={() => setStake(p)}
-            className={`rounded-lg px-2.5 py-1 text-xs ${
-              stake === p ? "bg-brand-wine text-brand-paper" : "bg-ink-800 text-mist-300"
+            className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+              stake === p ? "bg-brand-wine text-brand-paper" : "bg-brand-sand/30 text-brand-wine"
             }`}
           >
             {formatKes(p)}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-xs text-mist-500">Available {formatKes(available)}</p>
+      <p className="mt-2 text-xs text-brand-muted">Available {formatKes(available)}</p>
       {mine ? (
-        <p className="mt-2 text-sm text-mist-300">
+        <p className="mt-2 text-sm text-brand-wineDark">
           {formatKes(mine.stakeCredits)} · {mine.status}
           {mine.cashedOutAtBp != null ? ` @ ${formatBp(mine.cashedOutAtBp)}` : ""}
         </p>
@@ -131,7 +129,7 @@ function Slot({
         <button
           disabled={!canCash || busy || !mine}
           onClick={() => mine && onCash(mine.id)}
-          className="flex-1 rounded-xl border border-brand-wine py-2.5 text-sm font-semibold text-brand-wine disabled:opacity-40"
+          className="btn-ghost flex-1 font-semibold"
         >
           Cash out
         </button>
@@ -256,41 +254,41 @@ export default function PlayPage() {
   const crashed = state?.round?.status === "CRASHED" || state?.round?.status === "SETTLED";
   const displayBp = crashed ? state?.round?.crashMultiplierBp : (state?.multiplierBp ?? 100);
 
+  const boardTone = crashed
+    ? "text-brand-danger"
+    : state?.round?.status === "RUNNING"
+      ? "text-brand-wine"
+      : "text-brand-wineDark";
+
   return (
     <AppShell>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
         <div className="space-y-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-mist-500">
-                Round {state?.round?.roundNumber ?? "—"}
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold">{statusLabel(state?.round?.status)}</h1>
+              <p className="kicker">Round {state?.round?.roundNumber ?? "—"}</p>
+              <h1 className="page-title">{statusLabel(state?.round?.status)}</h1>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span
-                className={`h-2 w-2 rounded-full ${connected ? "bg-brand-wine" : "bg-brand-sand"}`}
-              />
-              <span className={connected ? "text-brand-wine" : "text-brand-sand"}>
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <span className={`h-2 w-2 rounded-full ${connected ? "bg-brand-success" : "bg-brand-sand"}`} />
+              <span className={connected ? "text-brand-success" : "text-brand-muted"}>
                 {connected ? "Live" : "Reconnecting"}
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="card px-4 py-3">
-              <p className="text-[11px] uppercase tracking-wide text-mist-500">Cash</p>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{formatKes(state?.cashCredits)}</p>
+            <div className="card px-4 py-4">
+              <p className="kicker">Cash</p>
+              <p className="mt-2 text-xl font-semibold tabular-nums">{formatKes(state?.cashCredits)}</p>
             </div>
-            <div className="card px-4 py-3">
-              <p className="text-[11px] uppercase tracking-wide text-mist-500">Free credits</p>
-              <p className="mt-1 text-xl font-semibold tabular-nums text-brand-wine">
-                {formatKes(state?.promoCredits)}
-              </p>
+            <div className="card px-4 py-4">
+              <p className="kicker">Free credits</p>
+              <p className="mt-2 text-xl font-semibold tabular-nums">{formatKes(state?.promoCredits)}</p>
             </div>
-            <div className="card col-span-2 px-4 py-3 sm:col-span-1">
-              <p className="text-[11px] uppercase tracking-wide text-mist-500">Stake with</p>
-              <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-ink-800 p-1">
+            <div className="card col-span-2 px-4 py-4 sm:col-span-1">
+              <p className="kicker">Stake with</p>
+              <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-brand-sand/30 p-1">
                 <button
                   type="button"
                   onClick={() => setWalletKind("REAL")}
@@ -304,7 +302,7 @@ export default function PlayPage() {
                   type="button"
                   onClick={() => setWalletKind("PROMO")}
                   className={`rounded-lg py-1.5 text-xs font-semibold ${
-                    resolvedKind === "PROMO" ? "bg-brand-sand text-brand-wine" : "text-brand-wine"
+                    resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"
                   }`}
                 >
                   Free
@@ -314,25 +312,25 @@ export default function PlayPage() {
           </div>
 
           {resolvedKind === "PROMO" ? (
-            <p className="text-sm text-brand-wine">
+            <p className="rounded-xl bg-brand-sand/25 px-4 py-3 text-sm text-brand-wineDark">
               Free play: higher chance the round lasts past a public crash. Winnings stay as free credits.
             </p>
           ) : (
-            <p className="text-sm text-mist-300">
+            <p className="rounded-xl bg-white px-4 py-3 text-sm text-brand-muted ring-1 ring-brand-sand/50">
               Cash bets use your M-PESA deposits (1 KES = 1 unit). Deposit first if this shows KES 0.
             </p>
           )}
 
-          <div className="relative flex min-h-64 flex-col items-center justify-center overflow-hidden rounded-2xl border border-brand-sand bg-white">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(130,29,48,0.12),transparent_55%)]" />
-            <p className="relative font-mono text-6xl font-semibold tabular-nums text-brand-wine sm:text-7xl">
+          <div className="relative flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-3xl border border-brand-sand/60 bg-brand-cream shadow-card">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(130,29,48,0.16),transparent_55%)]" />
+            <p className={`relative font-mono text-6xl font-semibold tabular-nums sm:text-7xl ${boardTone}`}>
               {formatBp(displayBp)}
             </p>
-            <p className="relative mt-3 text-sm text-brand-sand">
+            <p className="relative mt-4 text-sm font-medium text-brand-muted">
               {countdown != null ? `Betting closes in ${countdown}s` : statusLabel(state?.round?.status)}
             </p>
           </div>
-          {error ? <p className="text-sm text-signal-rose">{error}</p> : null}
+          {error ? <p className="alert-error">{error}</p> : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <Slot
               slotIndex={0}
@@ -362,29 +360,31 @@ export default function PlayPage() {
               setState((prev) => (prev ? { ...prev, cashCredits: cash, hasDeposited: true } : prev))
             }
           />
-          <section className="card p-4">
-            <h2 className="text-sm font-medium text-mist-300">This round</h2>
+          <section className="card p-5">
+            <h2 className="text-sm font-semibold text-brand-wine">This round</h2>
             <ul className="mt-3 max-h-80 space-y-2 overflow-auto text-sm">
               {(state?.bets ?? []).map((b) => (
-                <li key={b.id} className="flex justify-between gap-2">
+                <li key={b.id} className="flex justify-between gap-2 border-b border-brand-sand/40 py-2 last:border-0">
                   <span className="truncate">
                     {b.publicName}
                     {b.walletKind === "PROMO" ? (
-                      <span className="ml-1 text-[10px] uppercase text-signal-amber">free</span>
+                      <span className="ml-1 text-[10px] font-semibold uppercase text-brand-warning">free</span>
                     ) : null}
                   </span>
-                  <span className="shrink-0 tabular-nums text-mist-300">
+                  <span className="shrink-0 tabular-nums text-brand-muted">
                     {formatKes(b.stakeCredits)}
                     {b.cashedOutAtBp != null ? ` → ${formatBp(b.cashedOutAtBp)}` : ` ${b.status}`}
                   </span>
                 </li>
               ))}
-              {(state?.bets ?? []).length === 0 ? <li className="text-mist-500">No public bets yet.</li> : null}
+              {(state?.bets ?? []).length === 0 ? (
+                <li className="py-6 text-center text-brand-muted">No public bets yet.</li>
+              ) : null}
             </ul>
           </section>
-          <p className="text-xs text-mist-500">
+          <p className="text-xs leading-relaxed text-brand-muted">
             Commitment {state?.round?.serverSeedHash.slice(0, 16) ?? "—"}… ·{" "}
-            <a className="text-signal-teal" href="/fairness">
+            <a className="link-quiet" href="/fairness">
               Verify fairness
             </a>
           </p>

@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp, formatKes } from "@/components/ui/api";
 import { DepositPanel } from "@/components/wallet/DepositPanel";
 import { WithdrawPanel } from "@/components/wallet/WithdrawPanel";
+import { EmptyState, PageHeader } from "@/components/ui/chrome";
 import { useCallback, useEffect, useState } from "react";
 
 type Wallet = {
@@ -46,31 +47,26 @@ export default function WalletPage() {
   return (
     <AppShell>
       <div className="space-y-8">
-        <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-mist-500">Dashboard</p>
-          <h1 className="mt-1 text-2xl font-semibold">Your wallet</h1>
-        </div>
+        <PageHeader kicker="Dashboard" title="Your wallet" description="Cash is M-PESA. Free credits are for practice only." />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="card p-5">
-            <p className="text-xs uppercase tracking-wide text-mist-500">Cash (M-PESA)</p>
-            <p className="mt-2 font-mono text-3xl font-semibold">{formatKes(data?.cashCredits)}</p>
-            <p className="mt-2 text-sm text-mist-400">
+            <p className="kicker">Cash (M-PESA)</p>
+            <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">{formatKes(data?.cashCredits)}</p>
+            <p className="mt-2 text-sm text-brand-muted">
               {data?.hasDeposited
                 ? `Lifetime deposited ${formatKes(data.lifetimeDepositedKes)}`
                 : "No M-PESA deposit yet"}
             </p>
           </div>
           <div className="card p-5">
-            <p className="text-xs uppercase tracking-wide text-mist-500">Free credits</p>
-            <p className="mt-2 font-mono text-3xl font-semibold text-brand-wine">
-              {formatKes(data?.promoCredits)}
-            </p>
-            <p className="mt-2 text-sm text-mist-400">Practice play with a gentler crash curve.</p>
+            <p className="kicker">Free credits</p>
+            <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">{formatKes(data?.promoCredits)}</p>
+            <p className="mt-2 text-sm text-brand-muted">Practice play with a gentler crash curve.</p>
           </div>
           <div className="card p-5">
-            <p className="text-xs uppercase tracking-wide text-mist-500">How to play</p>
-            <p className="mt-2 text-sm leading-relaxed text-mist-300">
+            <p className="kicker">How to play</p>
+            <p className="mt-3 text-sm leading-relaxed text-brand-wineDark">
               Deposit to stake real shillings. Until then, use free credits on the Play screen.
             </p>
           </div>
@@ -83,71 +79,72 @@ export default function WalletPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section>
-            <h2 className="text-sm font-medium text-mist-300">Deposits</h2>
-            <ul className="mt-2 space-y-2 text-sm">
+            <h2 className="text-sm font-semibold text-brand-wine">Deposits</h2>
+            <ul className="mt-3 space-y-2">
               {(data?.deposits ?? []).map((d) => (
-                <li key={d.id} className="card flex justify-between px-4 py-3">
-                  <span>{formatKes(d.amountKes)}</span>
-                  <span className="text-mist-400">
+                <li key={d.id} className="list-row">
+                  <span className="font-semibold tabular-nums">{formatKes(d.amountKes)}</span>
+                  <span className="text-right text-brand-muted">
                     {d.status} · {new Date(d.createdAt).toLocaleString()}
                   </span>
                 </li>
               ))}
-              {(data?.deposits ?? []).length === 0 ? (
-                <li className="text-sm text-mist-500">No STK deposits yet.</li>
-              ) : null}
+              {(data?.deposits ?? []).length === 0 ? <EmptyState>No STK deposits yet.</EmptyState> : null}
             </ul>
           </section>
           <section>
-            <h2 className="text-sm font-medium text-mist-300">Withdrawals</h2>
-            <ul className="mt-2 space-y-2 text-sm">
+            <h2 className="text-sm font-semibold text-brand-wine">Withdrawals</h2>
+            <ul className="mt-3 space-y-2">
               {(data?.withdrawals ?? []).map((w) => (
-                <li key={w.id} className="card flex justify-between px-4 py-3">
-                  <span>{formatKes(w.amountKes)}</span>
-                  <span className="text-mist-400">
+                <li key={w.id} className="list-row">
+                  <span className="font-semibold tabular-nums">{formatKes(w.amountKes)}</span>
+                  <span className="text-right text-brand-muted">
                     {w.status} · {new Date(w.createdAt).toLocaleString()}
                   </span>
                 </li>
               ))}
-              {(data?.withdrawals ?? []).length === 0 ? (
-                <li className="text-sm text-mist-500">No withdrawals yet.</li>
-              ) : null}
+              {(data?.withdrawals ?? []).length === 0 ? <EmptyState>No withdrawals yet.</EmptyState> : null}
             </ul>
           </section>
-          <section>
-            <h2 className="text-sm font-medium text-mist-300">Recent activity</h2>
-            <ul className="mt-2 space-y-2 text-sm">
+          <section className="lg:col-span-2">
+            <h2 className="text-sm font-semibold text-brand-wine">Recent activity</h2>
+            <ul className="mt-3 space-y-2">
               {(data?.entries ?? []).slice(0, 12).map((e) => (
-                <li key={e.id} className="card px-4 py-3">
-                  <span className="text-signal-teal">{e.type.replace(/_/g, " ")}</span>
-                  <p className="text-mist-400">{e.reason}</p>
+                <li key={e.id} className="list-row flex-col items-start sm:flex-row sm:items-start">
+                  <span className="font-medium text-brand-success">{e.type.replace(/_/g, " ")}</span>
+                  <p className="text-brand-muted">{e.reason}</p>
                 </li>
               ))}
+              {(data?.entries ?? []).length === 0 ? <EmptyState>No ledger activity yet.</EmptyState> : null}
             </ul>
           </section>
         </div>
 
         <section>
-          <h2 className="text-sm font-medium text-mist-300">Bets</h2>
-          <ul className="mt-2 space-y-2 text-sm">
+          <h2 className="text-sm font-semibold text-brand-wine">Bets</h2>
+          <ul className="mt-3 space-y-2">
             {(data?.bets ?? []).map((b) => (
-              <li key={b.id} className="flex justify-between border-b border-ink-800 py-2">
+              <li key={b.id} className="list-row">
                 <span>
                   Slot {b.slotIndex + 1} · {b.walletKind === "PROMO" ? "Free" : "Cash"} · {formatKes(b.stakeCredits)}
                 </span>
-                <span className="text-mist-400">{b.status}</span>
+                <span className="text-brand-muted">{b.status}</span>
               </li>
             ))}
+            {(data?.bets ?? []).length === 0 ? <EmptyState>No bets yet.</EmptyState> : null}
           </ul>
         </section>
         <section>
-          <h2 className="text-sm font-medium text-mist-300">Cash-outs</h2>
-          <ul className="mt-2 space-y-2 text-sm">
+          <h2 className="text-sm font-semibold text-brand-wine">Cash-outs</h2>
+          <ul className="mt-3 space-y-2">
             {(data?.cashouts ?? []).map((c) => (
-              <li key={c.id}>
-                {formatKes(c.payoutCredits)} @ {formatBp(c.multiplierBp)}
+              <li key={c.id} className="list-row">
+                <span className="tabular-nums">
+                  {formatKes(c.payoutCredits)} @ {formatBp(c.multiplierBp)}
+                </span>
               </li>
             ))}
+            {(data?.cashouts ?? []).length === 0 ? <EmptyState>No cash-outs yet.</EmptyState> : null}
           </ul>
         </section>
       </div>

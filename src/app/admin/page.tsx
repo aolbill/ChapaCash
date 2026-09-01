@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp } from "@/components/ui/api";
+import { AdminNav, EmptyState, PageHeader, StatusBadge } from "@/components/ui/chrome";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -24,52 +25,50 @@ export default function AdminPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl">
-        <h1 className="text-2xl font-semibold">Admin</h1>
-        <p className="text-sm text-mist-500">No outcome controls. No direct balance edits.</p>
-        {error ? <p className="mt-4 text-signal-rose">{error}</p> : null}
+      <div className="mx-auto max-w-4xl space-y-8">
+        <PageHeader kicker="Ops" title="Admin" description="No outcome controls. No direct balance edits." actions={<AdminNav />} />
+        {error ? <p className="alert-error">{error}</p> : null}
         {data ? (
           <>
-            <dl className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-              <div className="border border-ink-700 p-3">
-                <dt className="text-mist-500">Mongo</dt>
-                <dd>{data.mongo ? "up" : "down"}</dd>
+            <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div className="card p-4">
+                <dt className="kicker">Mongo</dt>
+                <dd className="mt-2 font-semibold">
+                  <StatusBadge tone={data.mongo ? "ok" : "danger"}>{data.mongo ? "up" : "down"}</StatusBadge>
+                </dd>
               </div>
-              <div className="border border-ink-700 p-3">
-                <dt className="text-mist-500">Users</dt>
-                <dd>{data.userCount}</dd>
+              <div className="card p-4">
+                <dt className="kicker">Users</dt>
+                <dd className="mt-2 text-xl font-semibold">{data.userCount}</dd>
               </div>
-              <div className="border border-ink-700 p-3">
-                <dt className="text-mist-500">Virtual bets</dt>
-                <dd>{data.totalVirtualBets}</dd>
+              <div className="card p-4">
+                <dt className="kicker">Virtual bets</dt>
+                <dd className="mt-2 text-xl font-semibold tabular-nums">{data.totalVirtualBets}</dd>
               </div>
-              <div className="border border-ink-700 p-3">
-                <dt className="text-mist-500">Virtual payouts</dt>
-                <dd>{data.totalVirtualPayouts}</dd>
+              <div className="card p-4">
+                <dt className="kicker">Virtual payouts</dt>
+                <dd className="mt-2 text-xl font-semibold tabular-nums">{data.totalVirtualPayouts}</dd>
               </div>
             </dl>
-            <p className="mt-6 text-sm">
+            <p className="text-sm text-brand-muted">
               Active round {data.activeRound?.roundNumber ?? "—"} · {data.activeRound?.status ?? "none"}
             </p>
-            <h2 className="mt-6 text-sm uppercase tracking-wide text-mist-500">Recent rounds</h2>
-            <ul className="mt-2 space-y-1 text-sm">
-              {data.recentRounds.map((r) => (
-                <li key={r.id}>
-                  <Link className="text-signal-teal" href={`/admin/rounds/${r.id}`}>
-                    #{r.roundNumber}
-                  </Link>{" "}
-                  {r.status} {r.crashMultiplierBp != null ? formatBp(r.crashMultiplierBp) : ""}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 flex gap-4 text-sm">
-              <Link className="text-signal-teal" href="/admin/users">
-                Users
-              </Link>
-              <Link className="text-signal-teal" href="/admin/audit">
-                Audit log
-              </Link>
-            </div>
+            <section>
+              <h2 className="text-sm font-semibold text-brand-wine">Recent rounds</h2>
+              <ul className="mt-3 space-y-2">
+                {data.recentRounds.map((r) => (
+                  <li key={r.id} className="list-row">
+                    <Link className="link-quiet" href={`/admin/rounds/${r.id}`}>
+                      #{r.roundNumber}
+                    </Link>
+                    <span className="text-brand-muted">
+                      {r.status} {r.crashMultiplierBp != null ? formatBp(r.crashMultiplierBp) : ""}
+                    </span>
+                  </li>
+                ))}
+                {data.recentRounds.length === 0 ? <EmptyState>No rounds yet.</EmptyState> : null}
+              </ul>
+            </section>
           </>
         ) : null}
       </div>

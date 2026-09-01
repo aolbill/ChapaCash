@@ -64,12 +64,14 @@ export function DepositPanel({ onCredited }: { onCredited?: (cashCredits: string
   }
 
   return (
-    <form onSubmit={onDeposit} className="card space-y-3 p-5" id="deposit">
-      <h2 className="text-lg font-semibold">Deposit with M-PESA</h2>
-      <p className="text-sm text-mist-300">
-        STK push to your Safaricom number. Credited cash is what you stake on real bets.
-      </p>
-      <label className="block text-sm text-mist-300">
+    <form onSubmit={onDeposit} className="card space-y-4 p-5" id="deposit">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Deposit with M-PESA</h2>
+        <p className="mt-1 text-sm leading-relaxed text-brand-muted">
+          STK push to your Safaricom number. Credited cash is what you stake on real bets.
+        </p>
+      </div>
+      <label className="label">
         Amount (KES)
         <input
           className="field text-lg"
@@ -80,7 +82,7 @@ export function DepositPanel({ onCredited }: { onCredited?: (cashCredits: string
           required
         />
       </label>
-      <label className="block text-sm text-mist-300">
+      <label className="label">
         M-PESA phone
         <input
           className="field"
@@ -93,10 +95,10 @@ export function DepositPanel({ onCredited }: { onCredited?: (cashCredits: string
       <button disabled={busy} className="btn-primary w-full py-3 text-base">
         {busy ? "Sending STK push…" : "Send M-PESA STK push"}
       </button>
-      {msg ? <p className="text-sm text-signal-teal">{msg}</p> : null}
-      {error ? <p className="text-sm text-signal-rose">{error}</p> : null}
+      {msg ? <p className="alert-ok">{msg}</p> : null}
+      {error ? <p className="alert-error">{error}</p> : null}
       {pending?.status === "PENDING" ? (
-        <p className="text-sm text-signal-amber">Waiting for PIN on {pending.phone}…</p>
+        <p className="alert-wait">Waiting for PIN on {pending.phone}…</p>
       ) : null}
     </form>
   );

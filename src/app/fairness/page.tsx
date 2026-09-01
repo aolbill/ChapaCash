@@ -2,7 +2,15 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp } from "@/components/ui/api";
+import { EmptyState, PageHeader } from "@/components/ui/chrome";
 import { FormEvent, useEffect, useState } from "react";
+
+const FIELD_LABELS: Record<string, string> = {
+  algorithmVersion: "Algorithm",
+  serverSeed: "Server seed",
+  clientSeed: "Client seed",
+  nonce: "Nonce",
+};
 
 export default function FairnessPage() {
   const [proofs, setProofs] = useState<
@@ -50,35 +58,40 @@ export default function FairnessPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold">Fairness verification</h1>
-        <p className="mt-2 text-sm text-mist-300">
-          After a round is archived, the server seed is revealed. This page re-derives the crash point with
-          HMAC-SHA256. A matching number means the published inputs reproduce the result — it is not a
-          licensing or regulatory claim.
-        </p>
-        <form onSubmit={onVerify} className="mt-6 space-y-3">
+      <div className="mx-auto max-w-3xl space-y-8">
+        <PageHeader
+          kicker="Provably fair"
+          title="Fairness verification"
+          description="After a round is archived, the server seed is revealed. This page re-derives the crash point with HMAC-SHA256. A matching number means the published inputs reproduce the result — it is not a licensing or regulatory claim."
+        />
+        <form onSubmit={onVerify} className="card space-y-4 p-5">
           {(["algorithmVersion", "serverSeed", "clientSeed", "nonce"] as const).map((k) => (
-            <label key={k} className="block text-sm">
-              {k}
+            <label key={k} className="label">
+              {FIELD_LABELS[k]}
               <input
-                className="mt-1 w-full border border-ink-700 bg-ink-900 px-3 py-2 font-mono text-xs"
+                className="field font-mono text-xs"
                 value={form[k]}
                 onChange={(e) => setForm({ ...form, [k]: e.target.value })}
               />
             </label>
           ))}
-          <button className="bg-brand-wine px-4 py-2 text-brand-paper">Verify locally via API</button>
+          <button className="btn-primary">Verify locally via API</button>
         </form>
-        {result ? <p className="mt-4 text-signal-teal">{result}</p> : null}
-        <h2 className="mt-10 text-sm uppercase tracking-wide text-mist-500">Archived proofs</h2>
-        <ul className="mt-2 space-y-2 text-sm">
-          {proofs.map((p) => (
-            <li key={p.roundId} className="border border-ink-700 px-3 py-2">
-              Round {p.roundId.slice(-6)} · {formatBp(p.crashMultiplierBp)} · nonce {p.nonce}
-            </li>
-          ))}
-        </ul>
+        {result ? <p className="alert-ok">{result}</p> : null}
+        <section>
+          <h2 className="text-sm font-semibold text-brand-wine">Archived proofs</h2>
+          <ul className="mt-3 space-y-2">
+            {proofs.map((p) => (
+              <li key={p.roundId} className="list-row">
+                <span>Round {p.roundId.slice(-6)}</span>
+                <span className="tabular-nums text-brand-muted">
+                  {formatBp(p.crashMultiplierBp)} · nonce {p.nonce}
+                </span>
+              </li>
+            ))}
+            {proofs.length === 0 ? <EmptyState>No archived rounds yet.</EmptyState> : null}
+          </ul>
+        </section>
       </div>
     </AppShell>
   );

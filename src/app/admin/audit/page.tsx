@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
+import { AdminNav, EmptyState, PageHeader } from "@/components/ui/chrome";
 import { FormEvent, useEffect, useState } from "react";
 
 export default function AuditPage() {
@@ -23,26 +24,28 @@ export default function AuditPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold">Audit log</h1>
-        <form onSubmit={search} className="mt-4 flex gap-2">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader kicker="Ops" title="Audit log" actions={<AdminNav />} />
+        <form onSubmit={search} className="flex gap-2">
           <input
-            className="flex-1 border border-ink-700 bg-ink-900 px-3 py-2 text-sm"
+            className="field mt-0 flex-1"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Action, entity id, or request id"
           />
-          <button className="bg-brand-wine px-4 py-2 text-brand-paper">Search</button>
+          <button className="btn-primary shrink-0">Search</button>
         </form>
-        <ul className="mt-4 space-y-2 text-sm">
+        <ul className="space-y-2">
           {logs.map((l) => (
-            <li key={l.id} className="border border-ink-700 px-3 py-2">
-              <span className="text-signal-teal">{l.action}</span> · {l.reason}
-              <div className="text-mist-500">
+            <li key={l.id} className="list-row flex-col items-start">
+              <span className="font-medium text-brand-wine">{l.action}</span>
+              <span className="text-brand-wineDark">{l.reason}</span>
+              <span className="text-xs text-brand-muted">
                 {l.entityType}:{l.entityId}
-              </div>
+              </span>
             </li>
           ))}
+          {logs.length === 0 ? <EmptyState>No audit events.</EmptyState> : null}
         </ul>
       </div>
     </AppShell>
