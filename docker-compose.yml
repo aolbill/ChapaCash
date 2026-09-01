@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: strata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGE_ME_DB_PASSWORD}
+      POSTGRES_DB: strata
+    ports:
+      - "5432:5432"
+    volumes:
+      - strata_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strata -d strata"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://strata:${POSTGRES_PASSWORD:-CHANGE_ME_DB_PASSWORD}@postgres:5432/strata?schema=public
+      REDIS_URL: redis://redis:6379
+      APP_ORIGIN: http://localhost:3000
+      COOKIE_SECURE: "false"
+      DEMO_PLAYER_EMAIL: player@strata.test
+      DEMO_PLAYER_PASSWORD: ${DEMO_PLAYER_PASSWORD:-CHANGE_ME_PLAYER_PASSWORD}
+      DEMO_ADMIN_EMAIL: admin@strata.test
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-CHANGE_ME_ADMIN_PASSWORD}
+      FAIRNESS_CLIENT_SEED: strata-public-v1
+      FAIRNESS_ALGORITHM_VERSION: hmac-sha256-crash-v1
+      PROMO_CREDIT_AMOUNT: "10000"
+    ports:
+      - "3000:3000"
+    command: sh -c "npx prisma migrate deploy && npx tsx prisma/seed.ts && npm run start"
+
+  worker:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://strata:${POSTGRES_PASSWORD:-CHANGE_ME_DB_PASSWORD}@postgres:5432/strata?schema=public
+      REDIS_URL: redis://redis:6379
+      FAIRNESS_CLIENT_SEED: strata-public-v1
+      FAIRNESS_ALGORITHM_VERSION: hmac-sha256-crash-v1
+      ENGINE_LOCK_KEY: strata:engine:lock
+      ENGINE_TICK_MS: "100"
+      BETTING_WINDOW_MS: "8000"
+      INTERMISSION_MS: "4000"
+      GROWTH_PER_SECOND: "0.06"
+    command: sh -c "npx prisma migrate deploy && npm run worker"
+
+volumes:
+  strata_pg:

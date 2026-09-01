@@ -1,0 +1,47 @@
+{
+  "name": "chapacash",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ChapaCash — crash game with M-PESA.",
+  "scripts": {
+    "dev": "next dev --turbopack --hostname 127.0.0.1 --port 3000",
+    "dev:worker": "tsx watch src/worker/index.ts",
+    "dev:all": "npx concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run dev:worker\"",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx --env-file=.env.local src/worker/index.ts",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:seed": "tsx --env-file=.env.local src/scripts/seed.ts",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "@node-rs/argon2": "^2.0.2",
+    "decimal.js": "^10.5.0",
+    "mongoose": "^8.18.0",
+    "next": "^15.5.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.34.0",
+    "eslint-config-next": "^15.5.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

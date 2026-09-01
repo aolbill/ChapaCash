@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  PLAYER
+  ADMIN
+}
+
+enum RoundStatus {
+  SCHEDULED
+  BETTING_OPEN
+  BETTING_CLOSED
+  RUNNING
+  CRASHED
+  SETTLED
+  ARCHIVED
+}
+
+enum BetStatus {
+  PLACED
+  CASHED_OUT
+  LOST
+  VOID
+}
+
+enum LedgerTxType {
+  PROMO_CREDIT
+  BET_DEBIT
+  CASH_OUT_PAYOUT
+  LOST_BET_SETTLEMENT
+  COMPENSATING_CORRECTION
+}
+
+enum LedgerSide {
+  DEBIT
+  CREDIT
+}
+
+enum RoundEventType {
+  SCHEDULED
+  BETTING_OPEN
+  BETTING_CLOSED
+  RUNNING
+  TICK
+  CRASHED
+  SETTLED
+  ARCHIVED
+}
+
+enum AccountKind {
+  USER_WALLET
+  HOUSE
+  PROMO_POOL
+  WAGER_CLEARING
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String
+  publicName   String    @unique
+  role         RoleName  @default(PLAYER)
+  suspendedAt  DateTime?
+  disabledAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions               Session[]
+  wallet                 WalletAccount?
+  bets                   Bet[]
+  cashouts               Cashout[]
+  auditLogs              AuditLog[]              @relation("AuditActor")
+  subjectAuditLogs       AuditLog[]              @relation("AuditSubject")
+  responsiblePlaySetting ResponsiblePlaySetting?
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  ipHash     String?
+  userAgent  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model GameRound {
+  id                 String      @id @default(cuid())
+  roundNumber        Int         @unique
+  status             RoundStatus
+  nonce              String
+  clientSeed         String
+  serverSeedHash     String
+  /// Stored for crash recovery. Never returned by APIs until ARCHIVED.
+  serverSeed         String
+  algorithmVersion   String
+  crashMultiplierBp  Int?
+  bettingOpensAt     DateTime
+  bettingClosesAt    DateTime
+  runningStartedAt   DateTime?
+  crashedAt          DateTime?
+  settledAt          DateTime?
+  archivedAt         DateTime?
+  lastSequence       Int         @default(0)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  events        RoundEvent[]
+  bets          Bet[]
+  fairnessProof FairnessProof?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RoundEvent {
+  id        String         @id @default(cuid())
+  roundId   String
+  round     GameRound      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  sequence  Int
+  type      RoundEventType
+  payload   Json
+  createdAt DateTime       @default(now())
+
+  @@unique([roundId, sequence])
+  @@index([roundId, createdAt])
+}
+
+model Bet {
+  id             String    @id @default(cuid())
+  roundId        String
+  round          GameRound @relation(fields: [roundId], references: [id])
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  slotIndex      Int
+  stakeCredits   BigInt
+  status         BetStatus @default(PLACED)
+  idempotencyKey String
+  ledgerEntryId  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  cashout Cashout?
+
+  @@unique([roundId, userId, slotIndex])
+  @@unique([userId, idempotencyKey])
+  @@index([roundId, status])
+}
+
+model Cashout {
+  id              String   @id @default(cuid())
+  betId           String   @unique
+  bet             Bet      @relation(fields: [betId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  multiplierBp    Int
+  payoutCredits   BigInt
+  idempotencyKey  String
+  acceptedSeq     Int
+  ledgerEntryId   String?
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, idempotencyKey])
+}
+
+model WalletAccount {
+  id                   String      @id @default(cuid())
+  userId               String?     @unique
+  user                 User?       @relation(fields: [userId], references: [id])
+  kind                 AccountKind
+  cachedBalanceCredits BigInt      @default(0)
+  version              Int         @default(0)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  postings             LedgerPosting[]
+
+  @@unique([kind, userId])
+  @@index([kind])
+}
+
+model LedgerEntry {
+  id            String        @id @default(cuid())
+  type          LedgerTxType
+  requestId     String        @unique
+  actorUserId   String?
+  reason        String
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  postings      LedgerPosting[]
+
+  @@index([createdAt])
+  @@index([type])
+}
+
+model LedgerPosting {
+  id          String        @id @default(cuid())
+  entryId     String
+  entry       LedgerEntry   @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  accountId   String
+  account     WalletAccount @relation(fields: [accountId], references: [id])
+  side        LedgerSide
+  amount      BigInt
+  createdAt   DateTime      @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([entryId])
+}
+
+model FairnessProof {
+  id               String    @id @default(cuid())
+  roundId          String    @unique
+  round            GameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  algorithmVersion String
+  serverSeedHash   String
+  serverSeed       String
+  clientSeed       String
+  nonce            String
+  crashMultiplierBp Int
+  hmacPreview      String
+  createdAt        DateTime  @default(now())
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  actorUserId     String?
+  actor           User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  subjectUserId   String?
+  subject         User?    @relation("AuditSubject", fields: [subjectUserId], references: [id])
+  action          String
+  reason          String
+  requestId       String
+  entityType      String
+  entityId        String
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+}
+
+model ResponsiblePlaySetting {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// All enforcement is disabled in the play-money prototype.
+  enforcementEnabled Boolean  @default(false)
+  sessionLimitMs     Int?
+  lossLimitCredits   BigInt?
+  coolingOffUntil    DateTime?
+  selfExcludedUntil  DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model FeatureFlag {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  enabled   Boolean  @default(false)
+  note      String
+  updatedAt DateTime @updatedAt
+}

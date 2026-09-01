@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-brand-paper text-brand-wine antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:focus-visible {
+  @apply outline outline-2 outline-offset-2 outline-brand-wine;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-brand-sand/70 bg-white shadow-[0_8px_28px_rgba(130,29,48,0.08)];
+  }
+  .btn-primary {
+    @apply rounded-xl bg-brand-wine px-4 py-2.5 text-sm font-semibold text-brand-paper transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply rounded-xl border border-brand-sand px-4 py-2.5 text-sm font-medium text-brand-wine transition hover:bg-brand-sand/30 disabled:opacity-40;
+  }
+  .field {
+    @apply mt-1.5 w-full rounded-xl border border-brand-sand bg-brand-paper px-3 py-2.5 text-sm text-brand-wine placeholder:text-brand-sand;
+  }
+}
