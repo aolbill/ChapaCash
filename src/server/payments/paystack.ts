@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env, paystackConfigured } from "@/lib/env";
 import { ApiError } from "@/domain/errors";
+import { PAYSTACK_STARTER_PAYOUT_MESSAGE } from "@/domain/copy";
 import { logger } from "@/lib/logger";
 
 export function requirePaystackSecret(): string {
@@ -29,6 +30,22 @@ type PaystackJson = {
   };
 };
 
+function paystackApiError(path: string, message: string): ApiError {
+  const text = message || "Paystack request failed.";
+  const lower = text.toLowerCase();
+  if (lower.includes("third party payout") || lower.includes("starter business")) {
+    return new ApiError("internal", 503, PAYSTACK_STARTER_PAYOUT_MESSAGE);
+  }
+  if (path === "/transfer" && lower.includes("otp")) {
+    return new ApiError(
+      "internal",
+      503,
+      "Paystack is asking for a transfer OTP. In the Paystack dashboard, disable Transfer OTP (Settings → API), then try again.",
+    );
+  }
+  return new ApiError("invalid_input", 400, text);
+}
+
 async function paystack<T extends PaystackJson>(path: string, init?: RequestInit): Promise<T> {
   const secret = requirePaystackSecret();
   const res = await fetch(`${env.PAYSTACK_BASE_URL}${path}`, {
@@ -42,7 +59,7 @@ async function paystack<T extends PaystackJson>(path: string, init?: RequestInit
   const json = (await res.json()) as T;
   if (!res.ok || json.status === false) {
     logger.warn("paystack_error", { path, message: json.message });
-    throw new ApiError("invalid_input", 400, json.message || "Paystack request failed.");
+    throw paystackApiError(path, json.message);
   }
   return json;
 }
@@ -58,6 +75,7 @@ export async function chargeMpesaStk(args: {
     amount: args.amountKes * 100,
     currency: env.PAYSTACK_CURRENCY,
     reference: args.reference,
+    callback_url: env.PAYSTACK_CALLBACK_URL,
     mobile_money: {
       phone: args.phoneE164,
       provider: env.PAYSTACK_MPESA_PROVIDER,
@@ -73,9 +91,18 @@ export async function chargeMpesaStk(args: {
   };
 }
 
+export function kesFromPaystackAmount(subunits: number, expectedKes?: number): number {
+  const asKes = Math.floor(subunits / 100);
+  if (expectedKes == null) return asKes;
+  if (asKes === expectedKes) return expectedKes;
+  if (subunits === expectedKes) return expectedKes;
+  return asKes;
+}
+
 export async function verifyTransaction(reference: string): Promise<{
   success: boolean;
   amountKes: number | null;
+  amountSubunits: number | null;
   status: string;
 }> {
   const json = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`);
@@ -84,6 +111,7 @@ export async function verifyTransaction(reference: string): Promise<{
   return {
     success: status === "success",
     amountKes: typeof subunits === "number" ? Math.floor(subunits / 100) : null,
+    amountSubunits: typeof subunits === "number" ? subunits : null,
     status,
   };
 }

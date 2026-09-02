@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { tickEngine } from "@/server/game/service";
 import { ensureSystemAccounts } from "@/server/ledger/service";
+import { reconcilePendingDeposits } from "@/server/payments/deposit";
 import { EngineLock } from "@/server/db/models";
 
 const g = globalThis as unknown as { chapacashEngine?: boolean };
@@ -48,4 +49,10 @@ export function startEngine(): void {
       }
     })();
   }, tickMs);
+
+  setInterval(() => {
+    void reconcilePendingDeposits().catch((error) => {
+      logger.error("deposit_reconcile_tick_failed", { err: String(error) });
+    });
+  }, 10_000);
 }

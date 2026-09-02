@@ -3,7 +3,7 @@
 import { Nav } from "@/components/layout/Nav";
 import { api } from "@/components/ui/api";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Me = {
   id: string;
@@ -19,26 +19,41 @@ type Me = {
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const meRef = useRef<Me | null>(null);
+
+  useEffect(() => {
+    meRef.current = me;
+  }, [me]);
 
   useEffect(() => {
     let cancelled = false;
     const timeout = window.setTimeout(() => {
-      if (!cancelled) router.replace("/login");
+      if (!cancelled && !meRef.current) router.replace("/login");
     }, 15000);
-    void api<{ user: Me }>("/api/auth/me")
-      .then((d) => {
-        if (cancelled) return;
-        window.clearTimeout(timeout);
-        setMe(d.user);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        window.clearTimeout(timeout);
-        router.replace("/login");
-      });
+
+    const load = () =>
+      api<{ user: Me }>("/api/auth/me")
+        .then((d) => {
+          if (cancelled) return;
+          window.clearTimeout(timeout);
+          meRef.current = d.user;
+          setMe(d.user);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          window.clearTimeout(timeout);
+          if (!meRef.current) router.replace("/login");
+        });
+
+    void load();
+    const poll = window.setInterval(() => void load(), 5000);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
+      window.clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
     };
   }, [router]);
 

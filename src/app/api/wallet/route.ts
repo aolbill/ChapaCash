@@ -4,12 +4,14 @@ import { requireUser } from "@/server/auth/service";
 import { connectMongo } from "@/lib/mongo";
 import { Bet, Cashout, Deposit, LedgerEntry, WalletAccount, Withdrawal } from "@/server/db/models";
 import { userBalances } from "@/server/ledger/service";
+import { reconcilePendingDeposits } from "@/server/payments/deposit";
 
 export async function GET(req: Request) {
   const requestId = requestIdFrom(req);
   return handleApi(requestId, async () => {
     const user = await requireUser(req);
     await connectMongo();
+    await reconcilePendingDeposits(user.id);
     const balances = await userBalances(user.id, "full");
     const wallet = await WalletAccount.findOne({ userId: user.id, kind: "USER_WALLET" });
     const promo = await WalletAccount.findOne({ userId: user.id, kind: "USER_PROMO" });

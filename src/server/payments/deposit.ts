@@ -5,7 +5,7 @@ import { depositPostings } from "@/domain/ledger";
 import { normalizeKenyaPhone, phoneForPaystack } from "@/domain/phone";
 import { postLedger } from "@/server/ledger/service";
 import { Deposit, User } from "@/server/db/models";
-import { chargeMpesaStk, verifyTransaction } from "@/server/payments/paystack";
+import { chargeMpesaStk, kesFromPaystackAmount, verifyTransaction } from "@/server/payments/paystack";
 import { writeAudit } from "@/server/admin/audit";
 import { logger } from "@/lib/logger";
 
@@ -79,7 +79,7 @@ export async function settleSuccessfulDeposit(reference: string, paidKes: number
     deposit.status = "FAILED";
     deposit.failureReason = "amount_mismatch";
     await deposit.save();
-    logger.error("deposit_amount_mismatch", { reference });
+    logger.error("deposit_amount_mismatch", { reference, paidKes, expected });
     return deposit;
   }
 
@@ -96,24 +96,51 @@ export async function settleSuccessfulDeposit(reference: string, paidKes: number
 
   deposit.status = "SUCCESS";
   deposit.paystackStatus = "success";
+  deposit.failureReason = null;
   deposit.ledgerEntryId = String(entry._id);
   await deposit.save();
+  logger.info("deposit_settled", { reference, amountKes: deposit.amountKes, userId: deposit.userId });
   return deposit;
 }
 
 export async function refreshDeposit(reference: string) {
   const verified = await verifyTransaction(reference);
+  await connectMongo();
+  const deposit = await Deposit.findOne({ paystackReference: reference });
+  if (verified.success && verified.amountSubunits != null && deposit) {
+    const paidKes = kesFromPaystackAmount(verified.amountSubunits, Number(deposit.amountKes));
+    return settleSuccessfulDeposit(reference, paidKes);
+  }
   if (verified.success && verified.amountKes != null) {
     return settleSuccessfulDeposit(reference, verified.amountKes);
   }
-  await connectMongo();
-  const deposit = await Deposit.findOne({ paystackReference: reference });
   if (deposit && deposit.status === "PENDING" && ["failed", "abandoned"].includes(verified.status)) {
     deposit.status = "FAILED";
     deposit.paystackStatus = verified.status;
     await deposit.save();
   }
   return deposit;
+}
+
+export async function reconcilePendingDeposits(userId?: string) {
+  await connectMongo();
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const filter: Record<string, unknown> = {
+    createdAt: { $gte: since },
+    $or: [{ status: "PENDING" }, { status: "FAILED", failureReason: "amount_mismatch" }],
+  };
+  if (userId) filter.userId = userId;
+  const deposits = await Deposit.find(filter).sort({ createdAt: -1 }).limit(25);
+  for (const deposit of deposits) {
+    try {
+      await refreshDeposit(deposit.paystackReference);
+    } catch (error) {
+      logger.warn("deposit_reconcile_failed", {
+        reference: deposit.paystackReference,
+        err: String(error),
+      });
+    }
+  }
 }
 
 export function serializeDeposit(d: {

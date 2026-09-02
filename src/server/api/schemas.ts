@@ -28,6 +28,11 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+export const depositSchema = z.object({
+  amountKes: z.number().int().min(10).max(100_000),
+  phone: z.string().optional(),
+});
+
 export const withdrawSchema = z.object({
   amountKes: z.number().int().min(50).max(150_000),
   phone: z.string().optional(),

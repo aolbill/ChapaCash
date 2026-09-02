@@ -3,7 +3,7 @@ import { handleApi, requestIdFrom } from "@/lib/http";
 import { requireAdmin } from "@/server/auth/service";
 import { connectMongo } from "@/lib/mongo";
 import { mongoPing } from "@/lib/mongo";
-import { Bet, Cashout, GameRound, User } from "@/server/db/models";
+import { Bet, Cashout, Deposit, GameRound, User, WalletAccount } from "@/server/db/models";
 import { metrics } from "@/lib/metrics";
 import { rateLimit } from "@/server/security/rateLimit";
 import { env } from "@/lib/env";
@@ -21,10 +21,21 @@ export async function GET(req: Request) {
       { $group: { _id: null, total: { $sum: { $toLong: "$payoutCredits" } } } },
     ]);
     const users = await User.countDocuments();
+    const successfulDeposits = await Deposit.find({ status: "SUCCESS" });
+    let depositedKes = 0;
+    for (const d of successfulDeposits) depositedKes += Number(d.amountKes) || 0;
+    const pendingDeposits = await Deposit.countDocuments({ status: "PENDING" });
+    const cashWallets = await WalletAccount.find({ kind: "USER_WALLET", userId: { $ne: null } });
+    let cashInWallets = 0;
+    for (const w of cashWallets) cashInWallets += Number(w.cachedBalanceCredits) || 0;
     return NextResponse.json({
       playMoney: true,
       admin: { id: admin.id, email: admin.email },
       mongo: await mongoPing(),
+      depositedKes: String(depositedKes),
+      pendingDeposits,
+      cashInWallets: String(cashInWallets),
+      successfulDeposits: successfulDeposits.length,
       activeRound: round
         ? {
             id: String(round._id),

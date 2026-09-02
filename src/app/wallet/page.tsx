@@ -33,6 +33,13 @@ export default function WalletPage() {
 
   useEffect(() => {
     void load();
+    const poll = window.setInterval(() => void load(), 5000);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [load]);
 
   useEffect(() => {

@@ -5,7 +5,7 @@
   "description": "ChapaCash — crash game with M-PESA.",
   "scripts": {
     "dev": "next dev --turbopack --hostname 127.0.0.1 --port 3000",
-    "dev:worker": "tsx watch src/worker/index.ts",
+    "dev:worker": "tsx watch --env-file=.env.local src/worker/index.ts",
     "dev:all": "npx concurrently -k -n web,worker -c cyan,magenta \"npm run dev\" \"npm run dev:worker\"",
     "build": "next build",
     "start": "next start",

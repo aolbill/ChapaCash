@@ -12,6 +12,7 @@ import {
 } from "@/server/payments/paystack";
 import { writeAudit } from "@/server/admin/audit";
 import { logger } from "@/lib/logger";
+import { paystackPayoutsEnabled } from "@/lib/env";
 
 const MIN_KES = 50;
 const MAX_KES = 150_000;
@@ -56,17 +57,11 @@ export async function startMpesaWithdrawal(args: {
   });
 
   try {
-    const recipientCode = await createMpesaRecipient({
-      name: user.displayName.slice(0, 40),
-      nationalPhone: kenyaNationalFromStored(phone),
-    });
-    withdrawal.paystackRecipientCode = recipientCode;
-
     const entry = await postLedger({
       type: "MPESA_WITHDRAWAL",
       requestId: `mpesa-wd:${reference}`,
       actorUserId: args.userId,
-      reason: "M-PESA withdrawal via Paystack",
+      reason: "M-PESA withdrawal",
       userId: args.userId,
       metadata: { reference, phone },
       draftsFn: async (ids) =>
@@ -74,16 +69,25 @@ export async function startMpesaWithdrawal(args: {
     });
     withdrawal.ledgerEntryId = String(entry._id);
 
-    const transfer = await initiateMpesaTransfer({
-      amountKes: args.amountKes,
-      recipientCode,
-      reference,
-      reason: "ChapaCash cash withdrawal",
-    });
-    withdrawal.paystackTransferCode = transfer.transferCode;
-    withdrawal.paystackStatus = transfer.status;
-    if (transfer.status.toLowerCase() === "success") {
-      withdrawal.status = "SUCCESS";
+    if (paystackPayoutsEnabled()) {
+      const recipientCode = await createMpesaRecipient({
+        name: user.displayName.slice(0, 40),
+        nationalPhone: kenyaNationalFromStored(phone),
+      });
+      withdrawal.paystackRecipientCode = recipientCode;
+      const transfer = await initiateMpesaTransfer({
+        amountKes: args.amountKes,
+        recipientCode,
+        reference,
+        reason: "ChapaCash cash withdrawal",
+      });
+      withdrawal.paystackTransferCode = transfer.transferCode;
+      withdrawal.paystackStatus = transfer.status;
+      if (transfer.status.toLowerCase() === "success") {
+        withdrawal.status = "SUCCESS";
+      }
+    } else {
+      withdrawal.paystackStatus = "queued";
     }
     await withdrawal.save();
   } catch (error) {
@@ -94,7 +98,7 @@ export async function startMpesaWithdrawal(args: {
   await writeAudit({
     actorUserId: args.userId,
     action: "withdrawal.started",
-    reason: "M-PESA withdrawal initiated via Paystack",
+    reason: "M-PESA withdrawal requested",
     requestId: args.requestId,
     entityType: "Withdrawal",
     entityId: String(withdrawal._id),
@@ -152,11 +156,13 @@ export async function settleSuccessfulWithdrawal(reference: string) {
 }
 
 export async function refreshWithdrawal(reference: string) {
+  await connectMongo();
+  const existing = await Withdrawal.findOne({ paystackReference: reference });
+  if (!existing?.paystackTransferCode) return existing;
   const verified = await verifyTransfer(reference);
   if (verified.success) return settleSuccessfulWithdrawal(reference);
   if (verified.failed) return failWithdrawal(reference, `paystack:${verified.status}`);
-  await connectMongo();
-  return Withdrawal.findOne({ paystackReference: reference });
+  return existing;
 }
 
 export function serializeWithdrawal(d: {
