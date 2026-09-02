@@ -1,7 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { api, formatBp } from "@/components/ui/api";
+import { api, formatBp, formatKes } from "@/components/ui/api";
 import { AdminNav, EmptyState, PageHeader, StatusBadge } from "@/components/ui/chrome";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -10,6 +10,9 @@ export default function AdminPage() {
   const [data, setData] = useState<{
     mongo: boolean;
     userCount: number;
+    depositedKes: string;
+    pendingDeposits: number;
+    cashInWallets: string;
     totalVirtualBets: string;
     totalVirtualPayouts: string;
     activeRound: { id: string; status: string; roundNumber: number } | null;
@@ -18,9 +21,13 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void api<NonNullable<typeof data>>("/api/admin/dashboard")
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : "Forbidden"));
+    const load = () =>
+      api<NonNullable<typeof data>>("/api/admin/dashboard")
+        .then(setData)
+        .catch((e) => setError(e instanceof Error ? e.message : "Forbidden"));
+    void load();
+    const poll = window.setInterval(() => void load(), 5000);
+    return () => window.clearInterval(poll);
   }, []);
 
   return (
@@ -40,6 +47,18 @@ export default function AdminPage() {
               <div className="card p-4">
                 <dt className="kicker">Users</dt>
                 <dd className="mt-2 text-xl font-semibold">{data.userCount}</dd>
+              </div>
+              <div className="card p-4">
+                <dt className="kicker">M-PESA in</dt>
+                <dd className="mt-2 text-xl font-semibold tabular-nums">{formatKes(data.depositedKes)}</dd>
+              </div>
+              <div className="card p-4">
+                <dt className="kicker">Cash wallets</dt>
+                <dd className="mt-2 text-xl font-semibold tabular-nums">{formatKes(data.cashInWallets)}</dd>
+              </div>
+              <div className="card p-4">
+                <dt className="kicker">Pending STK</dt>
+                <dd className="mt-2 text-xl font-semibold">{data.pendingDeposits}</dd>
               </div>
               <div className="card p-4">
                 <dt className="kicker">Virtual bets</dt>

@@ -26,8 +26,12 @@ const schema = z.object({
   PAYSTACK_BASE_URL: z.string().default("https://api.paystack.co"),
   PAYSTACK_MPESA_PROVIDER: z.string().default("mpesa"),
   PAYSTACK_CURRENCY: z.string().default("KES"),
+  PAYSTACK_CALLBACK_URL: z.string().optional(),
+  PAYSTACK_WEBHOOK_URL: z.string().optional(),
+  PAYSTACK_PAYOUTS_ENABLED: z.string().default("true"),
   RATE_LIMIT_DEPOSIT_PER_MIN: z.string().default("8"),
   RATE_LIMIT_WITHDRAW_PER_MIN: z.string().default("5"),
+  RATE_LIMIT_ADMIN_PER_MIN: z.string().default("30"),
 });
 
 export const env = schema.parse(process.env);
@@ -45,4 +49,8 @@ export function mongoUri(): string {
 
 export function paystackConfigured(): boolean {
   return Boolean(env.PAYSTACK_SECRET_KEY && env.PAYSTACK_SECRET_KEY !== "CHANGE_ME");
+}
+
+export function paystackPayoutsEnabled(): boolean {
+  return env.PAYSTACK_PAYOUTS_ENABLED !== "false";
 }
