@@ -1,4 +1,6 @@
-import { defineConfig } from "eslint/config";
-import next from "eslint-config-next";
-
-export default defineConfig([...next]);
+/** @type {import("eslint").Linter.Config[]} */
+export default [
+  {
+    ignores: [".next/**", "node_modules/**", "out/**", "coverage/**"],
+  },
+];
