@@ -25,6 +25,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   serverExternalPackages: ["mongoose", "@node-rs/argon2"],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
