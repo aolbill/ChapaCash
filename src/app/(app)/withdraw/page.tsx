@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api, formatKes } from "@/components/ui/api";
 import { WithdrawPanel } from "@/components/wallet/WithdrawPanel";
 import { PageHeader } from "@/components/ui/chrome";
@@ -26,7 +25,6 @@ export default function WithdrawPage() {
   }, [load]);
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-lg space-y-6">
         <PageHeader
           kicker="Cash out"
@@ -47,6 +45,5 @@ export default function WithdrawPage() {
           </Link>
         </p>
       </div>
-    </AppShell>
   );
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { SITE_BANNER, SITE_NAME } from "@/domain/copy";
@@ -22,11 +22,18 @@ export const metadata: Metadata = {
   description: SITE_BANNER,
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f5f4f2",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
-      <body className="min-h-screen font-sans">
-        <div className="border-b border-brand-sand/70 bg-brand-sand/35 px-4 py-2 text-center text-[11px] font-medium leading-snug text-brand-wine sm:text-xs">
+      <body className="min-h-dvh font-sans">
+        <div className="border-b border-brand-sand/70 bg-brand-sand/35 px-3 py-2 text-center text-[11px] font-medium leading-snug text-brand-wine sm:px-4 sm:text-xs" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
           {SITE_BANNER}
         </div>
         {children}

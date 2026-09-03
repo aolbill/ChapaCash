@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
 import { AdminNav, EmptyState, PageHeader, StatusBadge } from "@/components/ui/chrome";
 import Link from "next/link";
@@ -16,7 +15,6 @@ export default function AdminUsersPage() {
   }, []);
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader kicker="Ops" title="Users" actions={<AdminNav />} />
         <ul className="space-y-2">
@@ -34,6 +32,5 @@ export default function AdminUsersPage() {
           {users.length === 0 ? <EmptyState>No users found.</EmptyState> : null}
         </ul>
       </div>
-    </AppShell>
   );
 }

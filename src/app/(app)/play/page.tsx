@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { BetSlip } from "@/components/play/BetSlip";
 import { FlightStage, useLiveMultiplier } from "@/components/play/FlightStage";
 import { HistoryStrip } from "@/components/play/HistoryStrip";
@@ -153,9 +152,9 @@ export default function PlayPage() {
   const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
 
   return (
-    <AppShell dense>
+    <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
           <span className="font-semibold tabular-nums text-brand-wine">{formatKes(state?.cashCredits)}</span>
           <span className="text-brand-muted">cash</span>
           <span className="text-brand-sand">·</span>
@@ -167,14 +166,14 @@ export default function PlayPage() {
             <button
               type="button"
               onClick={() => setWalletKind("REAL")}
-              className={`rounded-md px-3 py-1.5 ${resolvedKind === "REAL" ? "bg-brand-wine text-brand-paper" : "text-brand-wine"}`}
+              className={`min-h-10 rounded-md px-3 py-1.5 ${resolvedKind === "REAL" ? "bg-brand-wine text-brand-paper" : "text-brand-wine"}`}
             >
               Cash
             </button>
             <button
               type="button"
               onClick={() => setWalletKind("PROMO")}
-              className={`rounded-md px-3 py-1.5 ${resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"}`}
+              className={`min-h-10 rounded-md px-3 py-1.5 ${resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"}`}
             >
               Free
             </button>
@@ -236,12 +235,12 @@ export default function PlayPage() {
 
       {error ? <p className="alert-error mt-3">{error}</p> : null}
 
-      <p className="mt-3 text-[11px] text-brand-muted">
+      <p className="mt-3 break-all text-[11px] text-brand-muted">
         Round {state?.round?.roundNumber ?? "—"} · commitment {state?.round?.serverSeedHash.slice(0, 16) ?? "—"}… ·{" "}
         <a className="link-quiet" href="/fairness">
           Verify fairness
         </a>
       </p>
-    </AppShell>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp } from "@/components/ui/api";
 import { EmptyState, PageHeader } from "@/components/ui/chrome";
 import { FormEvent, useEffect, useState } from "react";
@@ -57,7 +56,6 @@ export default function FairnessPage() {
   }
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-3xl space-y-8">
         <PageHeader
           kicker="Provably fair"
@@ -69,13 +67,13 @@ export default function FairnessPage() {
             <label key={k} className="label">
               {FIELD_LABELS[k]}
               <input
-                className="field font-mono text-xs"
+                className="field font-mono text-sm break-all"
                 value={form[k]}
                 onChange={(e) => setForm({ ...form, [k]: e.target.value })}
               />
             </label>
           ))}
-          <button className="btn-primary">Verify locally via API</button>
+          <button className="btn-primary w-full sm:w-auto">Verify locally via API</button>
         </form>
         {result ? <p className="alert-ok">{result}</p> : null}
         <section>
@@ -93,6 +91,5 @@ export default function FairnessPage() {
           </ul>
         </section>
       </div>
-    </AppShell>
   );
 }

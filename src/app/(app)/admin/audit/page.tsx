@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
 import { AdminNav, EmptyState, PageHeader } from "@/components/ui/chrome";
 import { FormEvent, useEffect, useState } from "react";
@@ -23,17 +22,16 @@ export default function AuditPage() {
   }, []);
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader kicker="Ops" title="Audit log" actions={<AdminNav />} />
-        <form onSubmit={search} className="flex gap-2">
+        <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
           <input
-            className="field mt-0 flex-1"
+            className="field mt-0 min-w-0 flex-1"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Action, entity id, or request id"
           />
-          <button className="btn-primary shrink-0">Search</button>
+          <button className="btn-primary shrink-0 sm:w-auto">Search</button>
         </form>
         <ul className="space-y-2">
           {logs.map((l) => (
@@ -48,6 +46,5 @@ export default function AuditPage() {
           {logs.length === 0 ? <EmptyState>No audit events.</EmptyState> : null}
         </ul>
       </div>
-    </AppShell>
   );
 }

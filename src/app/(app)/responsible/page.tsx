@@ -1,10 +1,8 @@
-import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/ui/chrome";
 import { SITE_BANNER } from "@/domain/copy";
 
 export default function ResponsiblePage() {
   return (
-    <AppShell>
       <article className="mx-auto max-w-2xl space-y-6">
         <PageHeader kicker="Play safe" title="Responsible play" />
         <div className="card space-y-4 p-6 text-sm leading-relaxed">
@@ -19,6 +17,5 @@ export default function ResponsiblePage() {
           </p>
         </div>
       </article>
-    </AppShell>
   );
 }

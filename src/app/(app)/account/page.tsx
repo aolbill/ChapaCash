@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/ui/chrome";
 import { FormEvent, useEffect, useState } from "react";
@@ -38,7 +37,6 @@ export default function AccountPage() {
   }
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-xl space-y-8">
         <PageHeader kicker="Profile" title="Account" description="Your identity, password, and active sessions." />
         <section className="card p-5 text-sm">
@@ -71,7 +69,7 @@ export default function AccountPage() {
               autoComplete="new-password"
             />
           </label>
-          <button className="btn-primary">Update password</button>
+          <button className="btn-primary w-full sm:w-auto">Update password</button>
           {msg ? <p className="alert-ok">{msg}</p> : null}
           {error ? <p className="alert-error">{error}</p> : null}
         </form>
@@ -91,6 +89,5 @@ export default function AccountPage() {
           </ul>
         </section>
       </div>
-    </AppShell>
   );
 }

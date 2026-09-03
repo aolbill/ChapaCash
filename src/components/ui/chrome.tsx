@@ -7,14 +7,16 @@ import { SITE_NAME } from "@/domain/copy";
 
 export function BrandMark({ href = "/", compact = false }: { href?: string; compact?: boolean }) {
   return (
-    <Link href={href} className="flex items-center gap-2.5">
+    <Link href={href} className="flex min-w-0 items-center gap-2 sm:gap-2.5">
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-wine text-[11px] font-bold tracking-tight text-brand-paper shadow-sm">
         CC
       </span>
       {compact ? (
         <span className="sr-only">{SITE_NAME}</span>
       ) : (
-        <span className="text-lg font-semibold tracking-tight text-brand-wine">{SITE_NAME}</span>
+        <span className="hidden truncate text-base font-semibold tracking-tight text-brand-wine min-[380px]:inline sm:text-lg">
+          {SITE_NAME}
+        </span>
       )}
     </Link>
   );
@@ -32,13 +34,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <div className="min-w-0">
         {kicker ? <p className="kicker">{kicker}</p> : null}
         <h1 className="page-title">{title}</h1>
         {description ? <div className="page-lead">{description}</div> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      {actions ? <div className="flex w-full flex-wrap gap-2 sm:w-auto">{actions}</div> : null}
     </div>
   );
 }
@@ -79,7 +81,7 @@ export function AdminNav() {
     { href: "/admin/audit", label: "Audit", exact: false },
   ];
   return (
-    <nav className="flex flex-wrap gap-1 rounded-xl bg-brand-sand/30 p-1">
+    <nav className="flex w-full flex-wrap gap-1 rounded-xl bg-brand-sand/30 p-1 sm:w-auto">
       {items.map((item) => {
         const active = item.exact ? path === item.href : Boolean(path?.startsWith(item.href));
         return (

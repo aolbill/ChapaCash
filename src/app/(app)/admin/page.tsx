@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp, formatKes } from "@/components/ui/api";
 import { AdminNav, EmptyState, PageHeader, StatusBadge } from "@/components/ui/chrome";
 import Link from "next/link";
@@ -31,7 +30,6 @@ export default function AdminPage() {
   }, []);
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-4xl space-y-8">
         <PageHeader kicker="Ops" title="Admin" description="No outcome controls. No direct balance edits." actions={<AdminNav />} />
         {error ? <p className="alert-error">{error}</p> : null}
@@ -91,6 +89,5 @@ export default function AdminPage() {
           </>
         ) : null}
       </div>
-    </AppShell>
   );
 }
