@@ -9,7 +9,6 @@ import {
   generateServerSeed,
 } from "@/domain/fairness";
 import {
-  assertTransition,
   decideCashout,
   elapsedMsUntilCrash,
   isSlotIndex,
@@ -32,7 +31,6 @@ function growth(): string {
 }
 
 const liveSeq = new Map<string, number>();
-let liveRound: Awaited<ReturnType<typeof GameRound.findOne>> | null = null;
 
 function promoCrashBpFor(round: {
   serverSeed: string;
@@ -113,7 +111,6 @@ export async function createScheduledRound(): Promise<void> {
       bettingOpensAt,
       bettingClosesAt,
     });
-    liveRound = round;
     liveSeq.set(String(round._id), 0);
     await emit(String(round._id), "SCHEDULED", {
       roundNumber,
@@ -129,43 +126,53 @@ export async function createScheduledRound(): Promise<void> {
 
 export async function tickEngine(now = new Date()): Promise<void> {
   await connectMongo();
-  if (!liveRound) {
-    liveRound = await GameRound.findOne().sort({ roundNumber: -1 });
-  }
-  const latest = liveRound;
+  const latest = await GameRound.findOne().sort({ roundNumber: -1 });
   if (!latest || latest.status === "ARCHIVED") {
-    liveRound = null;
     await createScheduledRound();
     return;
   }
-  const active = latest;
-  const id = String(active._id);
-  const status = active.status as RoundState;
-  if (status === "SCHEDULED" && now >= active.bettingOpensAt) {
-    assertTransition("SCHEDULED", "BETTING_OPEN");
-    active.status = "BETTING_OPEN";
-    await active.save();
-    await emit(id, "BETTING_OPEN", { bettingClosesAt: active.bettingClosesAt.toISOString() });
+  const id = String(latest._id);
+  const status = latest.status as RoundState;
+
+  if (status === "SCHEDULED" && now >= latest.bettingOpensAt) {
+    const opened = await GameRound.findOneAndUpdate(
+      { _id: id, status: "SCHEDULED" },
+      { $set: { status: "BETTING_OPEN" } },
+      { new: true },
+    );
+    if (opened) {
+      await emit(id, "BETTING_OPEN", { bettingClosesAt: opened.bettingClosesAt.toISOString() });
+    }
     return;
   }
-  if (status === "BETTING_OPEN" && now >= active.bettingClosesAt) {
-    assertTransition("BETTING_OPEN", "BETTING_CLOSED");
-    active.status = "BETTING_CLOSED";
-    await active.save();
-    await emit(id, "BETTING_CLOSED", { commitment: active.serverSeedHash });
+
+  if (status === "BETTING_OPEN" && now >= latest.bettingClosesAt) {
+    const closed = await GameRound.findOneAndUpdate(
+      { _id: id, status: "BETTING_OPEN" },
+      { $set: { status: "BETTING_CLOSED" } },
+      { new: true },
+    );
+    if (closed) await emit(id, "BETTING_CLOSED", { commitment: closed.serverSeedHash });
     return;
   }
+
   if (status === "BETTING_CLOSED") {
-    assertTransition("BETTING_CLOSED", "RUNNING");
-    active.status = "RUNNING";
-    active.runningStartedAt = now;
-    await active.save();
-    await emit(id, "RUNNING", { runningStartedAt: now.toISOString() });
+    const running = await GameRound.findOneAndUpdate(
+      { _id: id, status: "BETTING_CLOSED" },
+      { $set: { status: "RUNNING", runningStartedAt: now } },
+      { new: true },
+    );
+    if (running) await emit(id, "RUNNING", { runningStartedAt: now.toISOString() });
     return;
   }
-  if (status === "RUNNING" && active.runningStartedAt) {
-    const crashBp = crashBpFor(active);
-    const elapsed = now.getTime() - active.runningStartedAt.getTime();
+
+  if (status === "RUNNING") {
+    const startedAt = latest.runningStartedAt ?? now;
+    if (!latest.runningStartedAt) {
+      await GameRound.updateOne({ _id: id, status: "RUNNING" }, { $set: { runningStartedAt: now } });
+    }
+    const crashBp = crashBpFor(latest);
+    const elapsed = now.getTime() - startedAt.getTime();
     const crashAt = elapsedMsUntilCrash(crashBp, growth());
     const currentBp = multiplierBpAt(elapsed, growth());
     if (elapsed >= crashAt || currentBp >= crashBp) {
@@ -175,13 +182,15 @@ export async function tickEngine(now = new Date()): Promise<void> {
     await emit(id, "TICK", { multiplierBp: currentBp, elapsedMs: elapsed }, false);
     return;
   }
+
   if (status === "CRASHED") {
     await settleRound(id);
     return;
   }
+
   if (status === "SETTLED") {
     const wait = Number(env.INTERMISSION_MS);
-    if (active.settledAt && now.getTime() - active.settledAt.getTime() >= wait) {
+    if (latest.settledAt && now.getTime() - latest.settledAt.getTime() >= wait) {
       await archiveRound(id);
       await createScheduledRound();
     }
@@ -195,7 +204,6 @@ async function crashAndSettle(roundId: string, crashBp: number, now: Date) {
     { new: true },
   );
   if (!updated) return;
-  liveRound = updated;
   await emit(roundId, "CRASHED", { crashMultiplierBp: crashBp });
   metrics.inc("rounds_crashed");
   await settleRound(roundId);
@@ -279,7 +287,6 @@ export async function settleRound(roundId: string): Promise<void> {
     { new: true },
   );
   if (settled) {
-    liveRound = settled;
     await emit(roundId, "SETTLED", {});
   }
 }
@@ -313,7 +320,6 @@ async function archiveRound(roundId: string) {
     { _id: roundId, status: "SETTLED" },
     { $set: { status: "ARCHIVED", archivedAt: new Date() } },
   );
-  liveRound = null;
   liveSeq.delete(roundId);
   await emit(roundId, "ARCHIVED", {
     serverSeed: derived.serverSeed,
