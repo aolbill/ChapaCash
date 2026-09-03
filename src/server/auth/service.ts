@@ -12,6 +12,18 @@ import { looksLikePhone, normalizeKenyaPhone, placeholderEmail } from "@/domain/
 
 const ARGON = { memoryCost: 19456, timeCost: 2, outputLen: 32, parallelism: 1 };
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const AUTH_CACHE_MS = 15_000;
+const sessionIdCache = new Map<string, { userId: string; until: number }>();
+const userCache = new Map<string, { user: AuthUser; until: number }>();
+
+export function invalidateAuthCaches(token?: string | null, userId?: string | null) {
+  if (token) sessionIdCache.delete(hashToken(token));
+  if (userId) userCache.delete(userId);
+  if (!token && !userId) {
+    sessionIdCache.clear();
+    userCache.clear();
+  }
+}
 
 export type RoleName = "PLAYER" | "ADMIN";
 
@@ -100,6 +112,12 @@ export async function provisionPlayerAccounts(userId: string) {
   });
 }
 
+export async function ensurePlayerAccounts(userId: string) {
+  const exists = await WalletAccount.exists({ userId, kind: "USER_WALLET" });
+  if (exists) return;
+  await provisionPlayerAccounts(userId);
+}
+
 export async function createUser(input: {
   email?: string | null;
   phone: string;
@@ -176,15 +194,37 @@ export type AuthUser = {
   suspendedAt: Date | null;
 };
 
-export async function userFromRequest(req: Request): Promise<AuthUser | null> {
-  await connectMongo();
+export async function sessionUserIdFromRequest(req: Request): Promise<string | null> {
   const token = readSessionToken(req);
   if (!token) return null;
-  const session = await Session.findOne({ tokenHash: hashToken(token) });
-  if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
-  const u = await User.findById(session.userId);
-  if (!u || u.disabledAt) return null;
-  return {
+  const tokenHash = hashToken(token);
+  const cached = sessionIdCache.get(tokenHash);
+  if (cached && cached.until > Date.now()) return cached.userId;
+  await connectMongo();
+  const session = await Session.findOne({ tokenHash })
+    .select("userId revokedAt expiresAt")
+    .lean();
+  if (!session || session.revokedAt || session.expiresAt < new Date()) {
+    sessionIdCache.delete(tokenHash);
+    return null;
+  }
+  const userId = String(session.userId);
+  sessionIdCache.set(tokenHash, { userId, until: Date.now() + AUTH_CACHE_MS });
+  return userId;
+}
+
+export async function authUserById(userId: string): Promise<AuthUser | null> {
+  const cached = userCache.get(userId);
+  if (cached && cached.until > Date.now()) return cached.user;
+  await connectMongo();
+  const u = await User.findById(userId)
+    .select("email phone displayName publicName role suspendedAt disabledAt")
+    .lean();
+  if (!u || u.disabledAt) {
+    userCache.delete(userId);
+    return null;
+  }
+  const user: AuthUser = {
     id: String(u._id),
     email: u.email ?? null,
     phone: u.phone ?? null,
@@ -193,6 +233,20 @@ export async function userFromRequest(req: Request): Promise<AuthUser | null> {
     role: u.role as RoleName,
     suspendedAt: u.suspendedAt ?? null,
   };
+  userCache.set(userId, { user, until: Date.now() + AUTH_CACHE_MS });
+  return user;
+}
+
+export function assertActiveUser(user: AuthUser | null): AuthUser {
+  if (!user) throw new ApiError("unauthorized", 401, "Authentication required.");
+  if (user.suspendedAt) throw new ApiError("account_suspended", 403, "Account is suspended.");
+  return user;
+}
+
+export async function userFromRequest(req: Request): Promise<AuthUser | null> {
+  const userId = await sessionUserIdFromRequest(req);
+  if (!userId) return null;
+  return authUserById(userId);
 }
 
 export async function findUserByIdentifier(identifier: string) {
@@ -200,19 +254,20 @@ export async function findUserByIdentifier(identifier: string) {
   const raw = identifier.trim();
   if (looksLikePhone(raw)) {
     try {
-      return await User.findOne({ phone: normalizeKenyaPhone(raw) });
+      return await User.findOne({ phone: normalizeKenyaPhone(raw) }).select(
+        "passwordHash phone email displayName publicName role disabledAt suspendedAt",
+      );
     } catch {
       return null;
     }
   }
-  return User.findOne({ email: raw.toLowerCase() });
+  return User.findOne({ email: raw.toLowerCase() }).select(
+    "passwordHash phone email displayName publicName role disabledAt suspendedAt",
+  );
 }
 
 export async function requireUser(req: Request): Promise<AuthUser> {
-  const user = await userFromRequest(req);
-  if (!user) throw new ApiError("unauthorized", 401, "Authentication required.");
-  if (user.suspendedAt) throw new ApiError("account_suspended", 403, "Account is suspended.");
-  return user;
+  return assertActiveUser(await userFromRequest(req));
 }
 
 export async function requireAdmin(req: Request): Promise<AuthUser> {

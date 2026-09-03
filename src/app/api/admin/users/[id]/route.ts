@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApi, readJson, requestIdFrom } from "@/lib/http";
-import { assertSameOrigin, requireAdmin } from "@/server/auth/service";
+import { assertSameOrigin, invalidateAuthCaches, requireAdmin } from "@/server/auth/service";
 import { suspendSchema } from "@/server/api/schemas";
 import { connectMongo } from "@/lib/mongo";
 import { User, Bet } from "@/server/db/models";
@@ -14,10 +14,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     await requireAdmin(req);
     const { id } = await ctx.params;
     await connectMongo();
-    const user = await User.findById(id);
+    const [user, balances, bets] = await Promise.all([
+      User.findById(id).select("email displayName publicName role suspendedAt").lean(),
+      userBalances(id),
+      Bet.find({ userId: id }).sort({ createdAt: -1 }).limit(20).select("status stakeCredits roundId").lean(),
+    ]);
     if (!user) throw new ApiError("not_found", 404, "User not found.");
-    const balances = await userBalances(id);
-    const bets = await Bet.find({ userId: id }).sort({ createdAt: -1 }).limit(20);
     return NextResponse.json({
       user: {
         id: String(user._id),
@@ -56,6 +58,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     user.suspendedAt = body.suspended ? new Date() : null;
     await user.save();
+    invalidateAuthCaches(null, id);
     await writeAudit({
       actorUserId: admin.id,
       subjectUserId: id,

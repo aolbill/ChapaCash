@@ -23,16 +23,26 @@ export type UserBalances = {
 };
 
 let systemAccountsReady = false;
+let systemIdCache: Partial<Record<"HOUSE" | "PROMO_POOL" | "WAGER_CLEARING" | "PAYSTACK_CLEARING", string>> = {};
 
 export async function ensureSystemAccounts() {
-  if (systemAccountsReady) return;
+  if (systemAccountsReady && Object.keys(systemIdCache).length === 4) return;
   await connectMongo();
-  for (const kind of ["HOUSE", "PROMO_POOL", "WAGER_CLEARING", "PAYSTACK_CLEARING"] as const) {
-    await WalletAccount.updateOne(
-      { kind, userId: null },
-      { $setOnInsert: { kind, userId: null, cachedBalanceCredits: "0", version: 0 } },
-      { upsert: true },
-    );
+  const kinds = ["HOUSE", "PROMO_POOL", "WAGER_CLEARING", "PAYSTACK_CLEARING"] as const;
+  await Promise.all(
+    kinds.map((kind) =>
+      WalletAccount.updateOne(
+        { kind, userId: null },
+        { $setOnInsert: { kind, userId: null, cachedBalanceCredits: "0", version: 0 } },
+        { upsert: true },
+      ),
+    ),
+  );
+  const rows = await WalletAccount.find({ userId: null, kind: { $in: kinds } })
+    .select("kind")
+    .lean();
+  for (const row of rows) {
+    systemIdCache[row.kind as keyof typeof systemIdCache] = String(row._id);
   }
   systemAccountsReady = true;
 }
@@ -40,21 +50,22 @@ export async function ensureSystemAccounts() {
 async function systemId(
   kind: "HOUSE" | "PROMO_POOL" | "WAGER_CLEARING" | "PAYSTACK_CLEARING",
 ): Promise<string> {
-  const row = await WalletAccount.findOne({ kind, userId: null });
-  if (!row) throw new Error(`missing_system_account:${kind}`);
-  return String(row._id);
+  const cached = systemIdCache[kind];
+  if (cached) return cached;
+  await ensureSystemAccounts();
+  const id = systemIdCache[kind];
+  if (!id) throw new Error(`missing_system_account:${kind}`);
+  return id;
 }
 
 async function ensureKind(userId: string, kind: "USER_WALLET" | "USER_PROMO") {
-  let row = await WalletAccount.findOne({ userId, kind });
-  if (!row) {
-    row = await WalletAccount.create({
-      userId,
-      kind,
-      cachedBalanceCredits: "0",
-    });
-  }
-  return row;
+  const existing = await WalletAccount.findOne({ userId, kind }).select("cachedBalanceCredits").lean();
+  if (existing) return existing;
+  return WalletAccount.create({
+    userId,
+    kind,
+    cachedBalanceCredits: "0",
+  });
 }
 
 export async function ensureUserWallets(userId: string) {
@@ -83,15 +94,19 @@ export async function ensureUserWallets(userId: string) {
 
 export async function resolveAccountIds(userId: string | null) {
   await ensureSystemAccounts();
-  const houseId = await systemId("HOUSE");
-  const promoPoolId = await systemId("PROMO_POOL");
-  const clearingId = await systemId("WAGER_CLEARING");
-  const paystackClearingId = await systemId("PAYSTACK_CLEARING");
+  const [houseId, promoPoolId, clearingId, paystackClearingId] = await Promise.all([
+    systemId("HOUSE"),
+    systemId("PROMO_POOL"),
+    systemId("WAGER_CLEARING"),
+    systemId("PAYSTACK_CLEARING"),
+  ]);
   let userWalletId = "";
   let userPromoId = "";
   if (userId) {
-    const real = await ensureKind(userId, "USER_WALLET");
-    const promo = await ensureKind(userId, "USER_PROMO");
+    const [real, promo] = await Promise.all([
+      ensureKind(userId, "USER_WALLET"),
+      ensureKind(userId, "USER_PROMO"),
+    ]);
     userWalletId = String(real._id);
     userPromoId = String(promo._id);
   }
@@ -203,12 +218,24 @@ export async function reconcileUserWallet(userId: string) {
 
 export async function userBalances(userId: string, detail: "fast" | "full" = "fast"): Promise<UserBalances> {
   await connectMongo();
-  let real = await WalletAccount.findOne({ userId, kind: "USER_WALLET" });
-  let promo = await WalletAccount.findOne({ userId, kind: "USER_PROMO" });
+  let wallets = await WalletAccount.find({
+    userId,
+    kind: { $in: ["USER_WALLET", "USER_PROMO"] },
+  })
+    .select("kind cachedBalanceCredits")
+    .lean();
+  let real = wallets.find((w) => w.kind === "USER_WALLET");
+  let promo = wallets.find((w) => w.kind === "USER_PROMO");
   if (!real || !promo) {
     await ensureUserWallets(userId);
-    real = await WalletAccount.findOne({ userId, kind: "USER_WALLET" });
-    promo = await WalletAccount.findOne({ userId, kind: "USER_PROMO" });
+    wallets = await WalletAccount.find({
+      userId,
+      kind: { $in: ["USER_WALLET", "USER_PROMO"] },
+    })
+      .select("kind cachedBalanceCredits")
+      .lean();
+    real = wallets.find((w) => w.kind === "USER_WALLET");
+    promo = wallets.find((w) => w.kind === "USER_PROMO");
   }
   const cashCredits = real?.cachedBalanceCredits ?? "0";
   const promoCredits = promo?.cachedBalanceCredits ?? "0";
@@ -220,7 +247,7 @@ export async function userBalances(userId: string, detail: "fast" | "full" = "fa
       lifetimeDepositedKes: "0",
     };
   }
-  const deposits = await Deposit.find({ userId, status: "SUCCESS" });
+  const deposits = await Deposit.find({ userId, status: "SUCCESS" }).select("amountKes").lean();
   let lifetime = 0n;
   for (const d of deposits) lifetime += toCredits(d.amountKes);
   return {

@@ -14,7 +14,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ roundId: string
     await rateLimit(`fairness:${clientKey(req)}`, Number(env.RATE_LIMIT_FAIRNESS_PER_MIN));
     const { roundId } = await ctx.params;
     await connectMongo();
-    const round = await GameRound.findById(roundId);
+    const round = await GameRound.findById(roundId).select("status serverSeedHash clientSeed nonce algorithmVersion").lean();
     if (!round) throw new ApiError("not_found", 404, "Round not found.");
     if (round.status !== "ARCHIVED") {
       return NextResponse.json({
@@ -25,7 +25,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ roundId: string
         algorithmVersion: round.algorithmVersion,
       });
     }
-    const proof = await FairnessProof.findOne({ roundId });
+    const proof = await FairnessProof.findOne({ roundId }).lean();
     if (!proof) throw new ApiError("not_found", 404, "Proof not found.");
     return NextResponse.json({
       revealed: true,

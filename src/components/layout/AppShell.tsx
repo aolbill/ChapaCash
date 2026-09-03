@@ -1,22 +1,26 @@
 "use client";
 
 import { Nav } from "@/components/layout/Nav";
-import { getCachedSession, setCachedSession } from "@/components/layout/session-cache";
+import {
+  getCachedSession,
+  hydrateSessionFromStorage,
+  setCachedSession,
+  useCachedSession,
+} from "@/components/layout/session-cache";
 import { ApiHttpError, api } from "@/components/ui/api";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
 export function AppShell({ children, dense = false }: { children: ReactNode; dense?: boolean }) {
   const router = useRouter();
   const path = usePathname();
   const isDense = dense || path === "/play";
-  const [me, setMe] = useState(getCachedSession());
+  const me = useCachedSession();
   const [bootError, setBootError] = useState<string | null>(null);
 
-  function remember(next: ReturnType<typeof getCachedSession>) {
-    setCachedSession(next);
-    setMe(next);
-  }
+  useLayoutEffect(() => {
+    hydrateSessionFromStorage();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,12 +30,12 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
         .then((d) => {
           if (cancelled) return;
           setBootError(null);
-          remember(d.user);
+          setCachedSession(d.user);
         })
         .catch((err) => {
           if (cancelled) return;
           if (err instanceof ApiHttpError && err.status === 401) {
-            remember(null);
+            setCachedSession(null);
             router.replace("/login");
             return;
           }
@@ -41,17 +45,10 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
         });
 
     void load();
-    const poll = window.setInterval(() => void load(), 60_000);
-    const onFocus = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
+    const poll = window.setInterval(() => void load(), 120_000);
     return () => {
       cancelled = true;
       window.clearInterval(poll);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
     };
   }, [router]);
 

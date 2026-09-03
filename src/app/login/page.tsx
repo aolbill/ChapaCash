@@ -1,5 +1,6 @@
 "use client";
 
+import { setCachedSession } from "@/components/layout/session-cache";
 import { api } from "@/components/ui/api";
 import { PublicHeader } from "@/components/layout/PublicHeader";
 import { useRouter } from "next/navigation";
@@ -18,11 +19,23 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await api("/api/auth/login", {
+      const data = await api<{
+        user: {
+          id: string;
+          email: string;
+          displayName: string;
+          publicName: string;
+          role: string;
+          cashCredits: string;
+          promoCredits: string;
+          hasDeposited: boolean;
+        };
+      }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ identifier, password }),
       });
-      router.push("/play");
+      setCachedSession(data.user);
+      router.replace("/play");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

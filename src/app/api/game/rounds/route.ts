@@ -17,7 +17,8 @@ export async function GET(req: Request) {
         crashMultiplierBp: 1,
         serverSeedHash: 1,
         archivedAt: 1,
-      });
+      })
+      .lean();
     return NextResponse.json({
       rounds: rounds.map((r) => ({
         id: String(r._id),

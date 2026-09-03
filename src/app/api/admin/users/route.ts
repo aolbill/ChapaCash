@@ -9,8 +9,18 @@ export async function GET(req: Request) {
   return handleApi(requestId, async () => {
     await requireAdmin(req);
     await connectMongo();
-    const users = await User.find().sort({ createdAt: -1 }).limit(100);
-    const wallets = await WalletAccount.find({ kind: { $in: ["USER_WALLET", "USER_PROMO"] } });
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .select("email publicName role suspendedAt")
+      .lean();
+    const ids = users.map((u) => String(u._id));
+    const wallets = await WalletAccount.find({
+      userId: { $in: ids },
+      kind: { $in: ["USER_WALLET", "USER_PROMO"] },
+    })
+      .select("userId kind cachedBalanceCredits")
+      .lean();
     const cash = new Map<string, string>();
     const promo = new Map<string, string>();
     for (const w of wallets) {

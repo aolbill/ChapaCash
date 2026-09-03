@@ -11,20 +11,23 @@ export async function GET(req: Request) {
   return handleApi(requestId, async () => {
     const user = await requireUser(req);
     await connectMongo();
-    await reconcilePendingDeposits(user.id);
-    const balances = await userBalances(user.id, "full");
-    const wallet = await WalletAccount.findOne({ userId: user.id, kind: "USER_WALLET" });
-    const promo = await WalletAccount.findOne({ userId: user.id, kind: "USER_PROMO" });
+    void reconcilePendingDeposits(user.id);
+    const [balances, wallet, promo, bets, cashouts, deposits, withdrawals] = await Promise.all([
+      userBalances(user.id, "full"),
+      WalletAccount.findOne({ userId: user.id, kind: "USER_WALLET" }).select("_id").lean(),
+      WalletAccount.findOne({ userId: user.id, kind: "USER_PROMO" }).select("_id").lean(),
+      Bet.find({ userId: user.id }).sort({ createdAt: -1 }).limit(50).lean(),
+      Cashout.find({ userId: user.id }).sort({ createdAt: -1 }).limit(50).lean(),
+      Deposit.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20).lean(),
+      Withdrawal.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20).lean(),
+    ]);
     const accountIds = [wallet, promo].filter(Boolean).map((w) => String(w!._id));
     const entries = await LedgerEntry.find({
       $or: [{ actorUserId: user.id }, { "postings.accountId": { $in: accountIds } }],
     })
       .sort({ createdAt: -1 })
-      .limit(50);
-    const bets = await Bet.find({ userId: user.id }).sort({ createdAt: -1 }).limit(50);
-    const cashouts = await Cashout.find({ userId: user.id }).sort({ createdAt: -1 }).limit(50);
-    const deposits = await Deposit.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20);
-    const withdrawals = await Withdrawal.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20);
+      .limit(50)
+      .lean();
     return NextResponse.json({
       playMoney: false,
       ...balances,

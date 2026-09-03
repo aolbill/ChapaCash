@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       const balances = await userBalances(user.id);
       return NextResponse.json({ deposit: serializeDeposit(deposit), ...balances });
     }
-    const deposits = await Deposit.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20);
+    const deposits = await Deposit.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20).lean();
     return NextResponse.json({ deposits: deposits.map(serializeDeposit) });
   });
 }

@@ -13,12 +13,19 @@ export async function connectMongo(): Promise<typeof mongoose> {
   if (cache.conn && mongoose.connection.readyState === 1) return cache.conn;
   if (!cache.promise) {
     mongoose.set("strictQuery", true);
+    mongoose.set("autoIndex", false);
+    mongoose.set("autoCreate", false);
     cache.promise = mongoose.connect(mongoUri(), {
-      // Existing Atlas database name. Do not rename without a data migration.
       dbName: "strata",
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 15_000,
+      maxPoolSize: 8,
+      minPoolSize: 0,
+      maxIdleTimeMS: 45_000,
+      serverSelectionTimeoutMS: 5_000,
+      connectTimeoutMS: 5_000,
+      socketTimeoutMS: 20_000,
+      heartbeatFrequencyMS: 10_000,
       retryWrites: true,
+      family: 4,
     });
   }
   try {
@@ -35,8 +42,7 @@ export async function connectMongo(): Promise<typeof mongoose> {
 export async function mongoPing(): Promise<boolean> {
   try {
     const conn = await connectMongo();
-    const r = await conn.connection.db?.admin().command({ ping: 1 });
-    return r?.ok === 1;
+    return conn.connection.readyState === 1;
   } catch (error) {
     logger.warn("mongo_ping_failed", { err: String(error) });
     return false;
