@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
 import { connectMongo } from "@/lib/mongo";
+import { NextResponse } from "next/server";
 import { cookieSecure, env } from "@/lib/env";
 import { ApiError } from "@/domain/errors";
 import { creditsFromString } from "@/domain/money";
@@ -35,28 +36,41 @@ export function publicNameFrom(id: string): string {
   return `Sky-${id.slice(-4)}`;
 }
 
-export function sessionCookie(token: string, expiresAt: Date) {
-  const parts = [
-    `${env.COOKIE_NAME}=${token}`,
-    "Path=/",
-    "HttpOnly",
-    "SameSite=Lax",
-    `Expires=${expiresAt.toUTCString()}`,
-  ];
-  if (cookieSecure()) parts.push("Secure");
-  return parts.join("; ");
+const SESSION_COOKIE_BASE = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  path: "/",
+};
+
+export function setSessionCookie(res: NextResponse, token: string, expiresAt: Date) {
+  res.cookies.set(env.COOKIE_NAME, token, {
+    ...SESSION_COOKIE_BASE,
+    secure: cookieSecure(),
+    expires: expiresAt,
+    maxAge: Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+  });
+  res.headers.set("Cache-Control", "private, no-store, max-age=0");
 }
 
-export function clearSessionCookie() {
-  const parts = [`${env.COOKIE_NAME}=`, "Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
-  if (cookieSecure()) parts.push("Secure");
-  return parts.join("; ");
+export function clearSessionCookie(res: NextResponse) {
+  res.cookies.set(env.COOKIE_NAME, "", {
+    ...SESSION_COOKIE_BASE,
+    secure: cookieSecure(),
+    maxAge: 0,
+    expires: new Date(0),
+  });
+  res.headers.set("Cache-Control", "private, no-store, max-age=0");
 }
 
 export function readSessionToken(req: Request): string | null {
   const cookie = req.headers.get("cookie") ?? "";
   const match = cookie.match(new RegExp(`(?:^|;\\s*)${env.COOKIE_NAME}=([^;]+)`));
-  return match?.[1] ?? null;
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
 }
 
 export async function provisionPlayerAccounts(userId: string) {

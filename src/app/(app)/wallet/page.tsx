@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp, formatKes } from "@/components/ui/api";
 import { DepositPanel } from "@/components/wallet/DepositPanel";
 import { WithdrawPanel } from "@/components/wallet/WithdrawPanel";
@@ -52,14 +51,13 @@ export default function WalletPage() {
   }, [data]);
 
   return (
-    <AppShell>
       <div className="space-y-8">
         <PageHeader kicker="Dashboard" title="Your wallet" description="Cash is M-PESA. Free credits are for practice only." />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="card p-5">
             <p className="kicker">Cash (M-PESA)</p>
-            <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">{formatKes(data?.cashCredits)}</p>
+            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.cashCredits)}</p>
             <p className="mt-2 text-sm text-brand-muted">
               {data?.hasDeposited
                 ? `Lifetime deposited ${formatKes(data.lifetimeDepositedKes)}`
@@ -68,7 +66,7 @@ export default function WalletPage() {
           </div>
           <div className="card p-5">
             <p className="kicker">Free credits</p>
-            <p className="mt-3 font-mono text-3xl font-semibold tabular-nums">{formatKes(data?.promoCredits)}</p>
+            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.promoCredits)}</p>
             <p className="mt-2 text-sm text-brand-muted">Practice play with a gentler crash curve.</p>
           </div>
           <div className="card p-5">
@@ -91,7 +89,7 @@ export default function WalletPage() {
               {(data?.deposits ?? []).map((d) => (
                 <li key={d.id} className="list-row">
                   <span className="font-semibold tabular-nums">{formatKes(d.amountKes)}</span>
-                  <span className="text-right text-brand-muted">
+                  <span className="min-w-0 break-words text-brand-muted sm:text-right">
                     {d.status} · {new Date(d.createdAt).toLocaleString()}
                   </span>
                 </li>
@@ -105,7 +103,7 @@ export default function WalletPage() {
               {(data?.withdrawals ?? []).map((w) => (
                 <li key={w.id} className="list-row">
                   <span className="font-semibold tabular-nums">{formatKes(w.amountKes)}</span>
-                  <span className="text-right text-brand-muted">
+                  <span className="min-w-0 break-words text-brand-muted sm:text-right">
                     {w.status} · {new Date(w.createdAt).toLocaleString()}
                   </span>
                 </li>
@@ -117,9 +115,9 @@ export default function WalletPage() {
             <h2 className="text-sm font-semibold text-brand-wine">Recent activity</h2>
             <ul className="mt-3 space-y-2">
               {(data?.entries ?? []).slice(0, 12).map((e) => (
-                <li key={e.id} className="list-row flex-col items-start sm:flex-row sm:items-start">
+                <li key={e.id} className="list-row">
                   <span className="font-medium text-brand-success">{e.type.replace(/_/g, " ")}</span>
-                  <p className="text-brand-muted">{e.reason}</p>
+                  <p className="min-w-0 break-words text-brand-muted">{e.reason}</p>
                 </li>
               ))}
               {(data?.entries ?? []).length === 0 ? <EmptyState>No ledger activity yet.</EmptyState> : null}
@@ -155,6 +153,5 @@ export default function WalletPage() {
           </ul>
         </section>
       </div>
-    </AppShell>
   );
 }

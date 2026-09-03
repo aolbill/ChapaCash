@@ -42,7 +42,7 @@ export function WithdrawPanel({ onUpdated }: { onUpdated?: () => void }) {
   }
 
   return (
-    <form onSubmit={onWithdraw} className="card scroll-mt-24 space-y-4 p-5" id="withdraw">
+    <form onSubmit={onWithdraw} className="card scroll-mt-28 space-y-4 p-4 sm:p-5" id="withdraw">
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Withdraw to M-PESA</h2>
         <p className="mt-1 text-sm leading-relaxed text-brand-muted">

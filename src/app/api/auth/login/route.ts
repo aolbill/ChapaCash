@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApi, readJson, requestIdFrom } from "@/lib/http";
-import { assertSameOrigin, createSession, sessionCookie, verifyPassword, findUserByIdentifier, provisionPlayerAccounts } from "@/server/auth/service";
+import { assertSameOrigin, createSession, setSessionCookie, verifyPassword, findUserByIdentifier, provisionPlayerAccounts } from "@/server/auth/service";
 import { loginSchema } from "@/server/api/schemas";
 import { ApiError } from "@/domain/errors";
 import { rateLimit, clientKey } from "@/server/security/rateLimit";
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
         role: user.role,
       },
     });
-    res.headers.set("Set-Cookie", sessionCookie(token, expiresAt));
+    setSessionCookie(res, token, expiresAt);
     return res;
   });
 }

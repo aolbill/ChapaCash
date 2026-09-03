@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp, formatKes } from "@/components/ui/api";
 import { DepositPanel } from "@/components/wallet/DepositPanel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -85,8 +84,8 @@ function Slot({
   const available =
     walletKind === "REAL" ? Number(state?.cashCredits ?? 0) : Number(state?.promoCredits ?? 0);
   return (
-    <section className="card p-5">
-      <div className="flex items-center justify-between">
+    <section className="card p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-brand-wine">Bet {slotIndex + 1}</h3>
         <span className="chip">{walletKind === "REAL" ? "Cash" : "Free"}</span>
       </div>
@@ -107,7 +106,7 @@ function Slot({
             type="button"
             disabled={Boolean(mine)}
             onClick={() => setStake(p)}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+            className={`min-h-10 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
               stake === p ? "bg-brand-wine text-brand-paper" : "bg-brand-sand/30 text-brand-wine"
             }`}
           >
@@ -122,14 +121,14 @@ function Slot({
           {mine.cashedOutAtBp != null ? ` @ ${formatBp(mine.cashedOutAtBp)}` : ""}
         </p>
       ) : null}
-      <div className="mt-4 flex gap-2">
-        <button disabled={!canBet || busy} onClick={() => onBet(slotIndex)} className="btn-primary flex-1">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <button disabled={!canBet || busy} onClick={() => onBet(slotIndex)} className="btn-primary min-h-12 flex-1">
           Place bet
         </button>
         <button
           disabled={!canCash || busy || !mine}
           onClick={() => mine && onCash(mine.id)}
-          className="btn-ghost flex-1 font-semibold"
+          className="btn-ghost min-h-12 flex-1 font-semibold"
         >
           Cash out
         </button>
@@ -261,11 +260,10 @@ export default function PlayPage() {
       : "text-brand-wineDark";
 
   return (
-    <AppShell>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)] lg:gap-6">
+        <div className="space-y-4 sm:space-y-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
               <p className="kicker">Round {state?.round?.roundNumber ?? "—"}</p>
               <h1 className="page-title">{statusLabel(state?.round?.status)}</h1>
             </div>
@@ -278,21 +276,21 @@ export default function PlayPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="card px-4 py-4">
+            <div className="card px-3 py-3 sm:px-4 sm:py-4">
               <p className="kicker">Cash</p>
-              <p className="mt-2 text-xl font-semibold tabular-nums">{formatKes(state?.cashCredits)}</p>
+              <p className="mt-2 truncate text-lg font-semibold tabular-nums sm:text-xl">{formatKes(state?.cashCredits)}</p>
             </div>
-            <div className="card px-4 py-4">
+            <div className="card px-3 py-3 sm:px-4 sm:py-4">
               <p className="kicker">Free credits</p>
-              <p className="mt-2 text-xl font-semibold tabular-nums">{formatKes(state?.promoCredits)}</p>
+              <p className="mt-2 truncate text-lg font-semibold tabular-nums sm:text-xl">{formatKes(state?.promoCredits)}</p>
             </div>
-            <div className="card col-span-2 px-4 py-4 sm:col-span-1">
+            <div className="card col-span-2 px-3 py-3 sm:col-span-1 sm:px-4 sm:py-4">
               <p className="kicker">Stake with</p>
               <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-brand-sand/30 p-1">
                 <button
                   type="button"
                   onClick={() => setWalletKind("REAL")}
-                  className={`rounded-lg py-1.5 text-xs font-semibold ${
+                  className={`min-h-10 rounded-lg py-1.5 text-xs font-semibold ${
                     resolvedKind === "REAL" ? "bg-brand-wine text-brand-paper" : "text-brand-wine"
                   }`}
                 >
@@ -301,7 +299,7 @@ export default function PlayPage() {
                 <button
                   type="button"
                   onClick={() => setWalletKind("PROMO")}
-                  className={`rounded-lg py-1.5 text-xs font-semibold ${
+                  className={`min-h-10 rounded-lg py-1.5 text-xs font-semibold ${
                     resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"
                   }`}
                 >
@@ -321,12 +319,12 @@ export default function PlayPage() {
             </p>
           )}
 
-          <div className="relative flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-3xl border border-brand-sand/60 bg-brand-cream shadow-card">
+          <div className="relative flex min-h-52 flex-col items-center justify-center overflow-hidden rounded-3xl border border-brand-sand/60 bg-brand-cream px-3 shadow-card sm:min-h-72">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(130,29,48,0.16),transparent_55%)]" />
-            <p className={`relative font-mono text-6xl font-semibold tabular-nums sm:text-7xl ${boardTone}`}>
+            <p className={`relative font-mono font-semibold tabular-nums text-[clamp(2.5rem,14vw,4.5rem)] ${boardTone}`}>
               {formatBp(displayBp)}
             </p>
-            <p className="relative mt-4 text-sm font-medium text-brand-muted">
+            <p className="relative mt-3 px-2 text-center text-sm font-medium text-brand-muted sm:mt-4">
               {countdown != null ? `Betting closes in ${countdown}s` : statusLabel(state?.round?.status)}
             </p>
           </div>
@@ -360,9 +358,9 @@ export default function PlayPage() {
               setState((prev) => (prev ? { ...prev, cashCredits: cash, hasDeposited: true } : prev))
             }
           />
-          <section className="card p-5">
+          <section className="card p-4 sm:p-5">
             <h2 className="text-sm font-semibold text-brand-wine">This round</h2>
-            <ul className="mt-3 max-h-80 space-y-2 overflow-auto text-sm">
+            <ul className="mt-3 max-h-64 space-y-2 overflow-auto text-sm sm:max-h-80">
               {(state?.bets ?? []).map((b) => (
                 <li key={b.id} className="flex justify-between gap-2 border-b border-brand-sand/40 py-2 last:border-0">
                   <span className="truncate">
@@ -382,7 +380,7 @@ export default function PlayPage() {
               ) : null}
             </ul>
           </section>
-          <p className="text-xs leading-relaxed text-brand-muted">
+          <p className="break-all text-xs leading-relaxed text-brand-muted">
             Commitment {state?.round?.serverSeedHash.slice(0, 16) ?? "—"}… ·{" "}
             <a className="link-quiet" href="/fairness">
               Verify fairness
@@ -390,6 +388,5 @@ export default function PlayPage() {
           </p>
         </aside>
       </div>
-    </AppShell>
   );
 }

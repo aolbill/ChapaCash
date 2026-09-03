@@ -1,3 +1,12 @@
+export class ApiHttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiHttpError";
+    this.status = status;
+  }
+}
+
 export function formatBp(bp: number | null | undefined): string {
   if (bp == null) return "—";
   const whole = Math.floor(bp / 100);
@@ -14,12 +23,13 @@ export function formatKes(value: string | number | null | undefined): string {
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
+    cache: "no-store",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
-  const data = await res.json();
+  const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
   if (!res.ok) {
-    throw new Error(data?.error?.message ?? "Request failed");
+    throw new ApiHttpError(data?.error?.message ?? "Request failed", res.status);
   }
   return data as T;
 }

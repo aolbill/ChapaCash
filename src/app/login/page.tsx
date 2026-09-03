@@ -33,8 +33,8 @@ export default function LoginPage() {
   return (
     <>
       <PublicHeader active="login" />
-      <main className="mx-auto max-w-md px-4 py-12">
-        <div className="card p-6 sm:p-8">
+      <main className="mx-auto max-w-md px-3 py-8 sm:px-4 sm:py-12">
+        <div className="card p-5 sm:p-8">
           <p className="kicker">Welcome back</p>
           <h1 className="page-title">Log in</h1>
           <p className="page-lead">Use your Kenyan phone number or email.</p>

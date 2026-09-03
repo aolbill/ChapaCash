@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api, formatBp } from "@/components/ui/api";
 import { AdminNav, EmptyState, PageHeader } from "@/components/ui/chrome";
 import { useParams } from "next/navigation";
@@ -25,7 +24,6 @@ export default function AdminRoundPage() {
   }, [id]);
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-2xl space-y-6">
         <PageHeader
           kicker="Ops"
@@ -52,6 +50,5 @@ export default function AdminRoundPage() {
           {(data?.events.length ?? 0) === 0 ? <EmptyState>No events.</EmptyState> : null}
         </ul>
       </div>
-    </AppShell>
   );
 }

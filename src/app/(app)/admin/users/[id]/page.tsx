@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { api } from "@/components/ui/api";
 import { AdminNav, PageHeader } from "@/components/ui/chrome";
 import { useParams } from "next/navigation";
@@ -31,7 +30,6 @@ export default function AdminUserDetailPage() {
   }
 
   return (
-    <AppShell>
       <div className="mx-auto max-w-xl space-y-6">
         <PageHeader
           kicker="Ops"
@@ -55,6 +53,5 @@ export default function AdminUserDetailPage() {
         </form>
         {msg ? <p className="alert-ok">{msg}</p> : null}
       </div>
-    </AppShell>
   );
 }

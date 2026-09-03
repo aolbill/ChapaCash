@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApi, readJson, requestIdFrom } from "@/lib/http";
-import { assertSameOrigin, createSession, createUser, sessionCookie } from "@/server/auth/service";
+import { assertSameOrigin, createSession, createUser, setSessionCookie } from "@/server/auth/service";
 import { registerSchema } from "@/server/api/schemas";
 import { ApiError } from "@/domain/errors";
 import { PhoneError } from "@/domain/phone";
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
           role: user.role,
         },
       });
-      res.headers.set("Set-Cookie", sessionCookie(token, expiresAt));
+      setSessionCookie(res, token, expiresAt);
       return res;
     } catch (error) {
       if (error instanceof PhoneError) {

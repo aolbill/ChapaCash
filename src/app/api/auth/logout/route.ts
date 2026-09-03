@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       );
     }
     const res = NextResponse.json({ ok: true });
-    res.headers.set("Set-Cookie", clearSessionCookie());
+    clearSessionCookie(res);
     return res;
   });
 }
