@@ -61,9 +61,11 @@ const GameRoundSchema = new Schema(
     settledAt: { type: Date, default: null },
     archivedAt: { type: Date, default: null },
     lastSequence: { type: Number, default: 0 },
+    liveKey: { type: String, default: null },
   },
   { timestamps: true },
 );
+GameRoundSchema.index({ liveKey: 1 }, { unique: true, sparse: true });
 
 const RoundEventSchema = new Schema(
   {

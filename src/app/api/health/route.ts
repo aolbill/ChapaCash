@@ -8,8 +8,8 @@ export async function GET() {
   startEngine();
   try {
     await connectMongo();
-    const round = await GameRound.findOne()
-      .sort({ roundNumber: -1 })
+    const round = await GameRound.findOne({ status: { $ne: "ARCHIVED" } })
+      .sort({ roundNumber: 1 })
       .select({ status: 1, roundNumber: 1 })
       .lean();
     return NextResponse.json({

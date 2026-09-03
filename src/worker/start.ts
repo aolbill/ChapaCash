@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { connectMongo } from "@/lib/mongo";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -11,11 +12,17 @@ const g = globalThis as unknown as {
   chapacashReconcileTimer?: ReturnType<typeof setInterval>;
   engineLockUntil?: number;
   engineTickBusy?: boolean;
+  engineOwner?: string;
   runEngineTick?: () => Promise<void>;
 };
 
+function engineOwner() {
+  if (!g.engineOwner) g.engineOwner = randomBytes(12).toString("hex");
+  return g.engineOwner;
+}
+
 async function tryLock(): Promise<boolean> {
-  const owner = String(process.pid);
+  const owner = engineOwner();
   const nowMs = Date.now();
   if ((g.engineLockUntil ?? 0) > nowMs + 400) return true;
 
