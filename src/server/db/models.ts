@@ -2,6 +2,8 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 const credits = { type: String, required: true, default: "0" };
 
+
+
 const UserSchema = new Schema(
   {
     email: { type: String, unique: true, sparse: true, lowercase: true, default: null },

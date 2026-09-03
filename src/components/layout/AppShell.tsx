@@ -3,11 +3,13 @@
 import { Nav } from "@/components/layout/Nav";
 import { getCachedSession, setCachedSession } from "@/components/layout/session-cache";
 import { ApiHttpError, api } from "@/components/ui/api";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, dense = false }: { children: ReactNode; dense?: boolean }) {
   const router = useRouter();
+  const path = usePathname();
+  const isDense = dense || path === "/play";
   const [me, setMe] = useState(getCachedSession());
   const [bootError, setBootError] = useState<string | null>(null);
 
@@ -80,7 +82,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         cashCredits={me.cashCredits}
         promoCredits={me.promoCredits}
       />
-      <div className="mx-auto max-w-6xl px-3 pb-28 pt-4 sm:px-4 sm:py-8 lg:pb-8">{children}</div>
+      <div
+        className={
+          isDense
+            ? "mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-4 lg:pb-4"
+            : "mx-auto max-w-6xl px-3 pb-28 pt-4 sm:px-4 sm:py-8 lg:pb-8"
+        }
+      >
+        {children}
+      </div>
     </>
   );
 }

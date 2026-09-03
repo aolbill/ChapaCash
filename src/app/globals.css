@@ -84,3 +84,11 @@ body {
     @apply font-medium text-brand-wine underline decoration-brand-sand underline-offset-4 hover:decoration-brand-wine;
   }
 }
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
