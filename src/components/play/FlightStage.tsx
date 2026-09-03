@@ -81,11 +81,15 @@ export function FlightStage({
   status,
   displayBp,
   countdown,
+  bettingOpensAt,
+  bettingClosesAt,
   connected,
 }: {
   status: string | undefined;
   displayBp: number;
   countdown: number | null;
+  bettingOpensAt?: string;
+  bettingClosesAt?: string;
   connected: boolean;
 }) {
   const crashed = status === "CRASHED" || status === "SETTLED";
@@ -96,7 +100,12 @@ export function FlightStage({
   const path = useMemo(() => samplePath(Math.max(100, displayBp), ceiling), [displayBp, ceiling]);
   const tip = project(Math.max(100, displayBp), ceiling);
   const showTrail = flying || crashed;
-  const ring = countdown != null ? Math.max(0, Math.min(1, countdown / 8)) : 0;
+  const windowSec = useMemo(() => {
+    if (!bettingOpensAt || !bettingClosesAt) return 15;
+    const ms = new Date(bettingClosesAt).getTime() - new Date(bettingOpensAt).getTime();
+    return Math.max(1, ms / 1000);
+  }, [bettingOpensAt, bettingClosesAt]);
+  const ring = countdown != null ? Math.max(0, Math.min(1, countdown / windowSec)) : 0;
 
   return (
     <div className="relative min-h-[280px] overflow-hidden bg-[#11131c] sm:min-h-[360px] lg:min-h-[420px]">
@@ -159,7 +168,11 @@ export function FlightStage({
               </span>
             </div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
-              {status === "BETTING_CLOSED" ? "Starting" : "Waiting for next round"}
+              {status === "BETTING_CLOSED"
+                ? "Starting"
+                : status === "BETTING_OPEN"
+                  ? "Place your bets"
+                  : "Waiting for next round"}
             </p>
           </div>
         ) : (

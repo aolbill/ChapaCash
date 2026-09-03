@@ -17,6 +17,7 @@ export type RoundStatePayload = {
   promoCredits: string;
   hasDeposited: boolean;
   lifetimeDepositedKes?: string;
+  serverNow?: string;
   multiplierBp: number | null;
   myBets: BetRow[];
   bets: BetRow[];
