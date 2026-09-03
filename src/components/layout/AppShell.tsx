@@ -16,7 +16,7 @@ type Me = {
   hasDeposited: boolean;
 };
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, dense = false }: { children: ReactNode; dense?: boolean }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const meRef = useRef<Me | null>(null);
@@ -77,7 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         cashCredits={me.cashCredits}
         promoCredits={me.promoCredits}
       />
-      <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
+      <div className={dense ? "mx-auto max-w-[1440px] px-3 py-4 sm:px-4" : "mx-auto max-w-6xl px-4 py-8"}>
+        {children}
+      </div>
     </>
   );
 }

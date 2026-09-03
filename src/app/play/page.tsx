@@ -1,158 +1,30 @@
 "use client";
 
 import { AppShell } from "@/components/layout/AppShell";
-import { api, formatBp, formatKes } from "@/components/ui/api";
-import { DepositPanel } from "@/components/wallet/DepositPanel";
+import { BetSlip } from "@/components/play/BetSlip";
+import { FlightStage, useLiveMultiplier } from "@/components/play/FlightStage";
+import { HistoryStrip } from "@/components/play/HistoryStrip";
+import { LiveBets } from "@/components/play/LiveBets";
+import type { HistoryRound, RoundStatePayload, WalletKind } from "@/components/play/types";
+import { api, formatKes } from "@/components/ui/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type WalletKind = "REAL" | "PROMO";
-
-type BetRow = {
-  id: string;
-  publicName: string;
-  userId: string;
-  slotIndex: number;
-  stakeCredits: string;
-  walletKind?: WalletKind;
-  status: string;
-  cashedOutAtBp: number | null;
-  payoutCredits: string | null;
-};
-
-type State = {
-  cashCredits: string;
-  promoCredits: string;
-  hasDeposited: boolean;
-  lifetimeDepositedKes?: string;
-  multiplierBp: number | null;
-  myBets: BetRow[];
-  bets: BetRow[];
-  round: {
-    id: string;
-    roundNumber: number;
-    status: string;
-    bettingOpensAt: string;
-    bettingClosesAt: string;
-    crashMultiplierBp: number | null;
-    lastSequence: number;
-    serverSeedHash: string;
-  } | null;
-};
-
-function statusLabel(s: string | undefined) {
-  switch (s) {
-    case "BETTING_OPEN":
-      return "Place your stake";
-    case "BETTING_CLOSED":
-      return "Locked in";
-    case "RUNNING":
-      return "In flight";
-    case "CRASHED":
-      return "Crashed";
-    case "SETTLED":
-      return "Settling";
-    case "SCHEDULED":
-      return "Next round";
-    default:
-      return s ?? "—";
-  }
-}
-
-const PRESETS = ["50", "100", "200", "500"];
-
-function Slot({
-  slotIndex,
-  state,
-  stake,
-  setStake,
-  onBet,
-  onCash,
-  busy,
-  walletKind,
-}: {
-  slotIndex: number;
-  state: State | null;
-  stake: string;
-  setStake: (v: string) => void;
-  onBet: (slot: number) => void;
-  onCash: (betId: string) => void;
-  busy: boolean;
-  walletKind: WalletKind;
-}) {
-  const mine = state?.myBets.find((b) => b.slotIndex === slotIndex);
-  const canBet = state?.round?.status === "BETTING_OPEN" && !mine;
-  const canCash = state?.round?.status === "RUNNING" && mine?.status === "PLACED";
-  const available =
-    walletKind === "REAL" ? Number(state?.cashCredits ?? 0) : Number(state?.promoCredits ?? 0);
-  return (
-    <section className="card p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-brand-wine">Bet {slotIndex + 1}</h3>
-        <span className="chip">{walletKind === "REAL" ? "Cash" : "Free"}</span>
-      </div>
-      <label className="label mt-4">
-        Stake
-        <input
-          className="field text-lg font-semibold tabular-nums"
-          value={stake}
-          onChange={(e) => setStake(e.target.value.replace(/[^0-9]/g, ""))}
-          inputMode="numeric"
-          disabled={Boolean(mine)}
-        />
-      </label>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {PRESETS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            disabled={Boolean(mine)}
-            onClick={() => setStake(p)}
-            className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
-              stake === p ? "bg-brand-wine text-brand-paper" : "bg-brand-sand/30 text-brand-wine"
-            }`}
-          >
-            {formatKes(p)}
-          </button>
-        ))}
-      </div>
-      <p className="mt-2 text-xs text-brand-muted">Available {formatKes(available)}</p>
-      {mine ? (
-        <p className="mt-2 text-sm text-brand-wineDark">
-          {formatKes(mine.stakeCredits)} · {mine.status}
-          {mine.cashedOutAtBp != null ? ` @ ${formatBp(mine.cashedOutAtBp)}` : ""}
-        </p>
-      ) : null}
-      <div className="mt-4 flex gap-2">
-        <button disabled={!canBet || busy} onClick={() => onBet(slotIndex)} className="btn-primary flex-1">
-          Place bet
-        </button>
-        <button
-          disabled={!canCash || busy || !mine}
-          onClick={() => mine && onCash(mine.id)}
-          className="btn-ghost flex-1 font-semibold"
-        >
-          Cash out
-        </button>
-      </div>
-    </section>
-  );
-}
-
 export default function PlayPage() {
-  const [state, setState] = useState<State | null>(null);
+  const [state, setState] = useState<RoundStatePayload | null>(null);
   const [stake0, setStake0] = useState("100");
   const [stake1, setStake1] = useState("50");
   const [walletKind, setWalletKind] = useState<WalletKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState<number | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryRound[]>([]);
   const meIdRef = useRef<string | null>(null);
   meIdRef.current = meId;
 
   const refresh = useCallback(async () => {
-    const data = await api<State>("/api/game/state");
+    const data = await api<RoundStatePayload>("/api/game/state");
     setState(data);
   }, []);
 
@@ -160,6 +32,25 @@ export default function PlayPage() {
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    void api<{ rounds: HistoryRound[] }>("/api/game/rounds")
+      .then((d) => setHistory(d.rounds))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const crash = state?.round?.crashMultiplierBp;
+    const id = state?.round?.id;
+    if (!id || crash == null) return;
+    if (state.round?.status !== "CRASHED" && state.round?.status !== "SETTLED" && state.round?.status !== "ARCHIVED") {
+      return;
+    }
+    setHistory((prev) => {
+      if (prev.some((r) => r.id === id)) return prev;
+      return [{ id, roundNumber: state.round?.roundNumber ?? 0, crashMultiplierBp: crash }, ...prev].slice(0, 25);
+    });
+  }, [state?.round?.id, state?.round?.status, state?.round?.crashMultiplierBp, state?.round?.roundNumber]);
 
   useEffect(() => {
     let es: EventSource | null = null;
@@ -177,7 +68,7 @@ export default function PlayPage() {
           cashCredits?: string;
           promoCredits?: string;
           hasDeposited?: boolean;
-        } & Partial<State>;
+        } & Partial<RoundStatePayload>;
         if (payload.type === "snapshot" || payload.type === "state") {
           const bets = payload.bets ?? [];
           setState((prev) => ({
@@ -203,193 +94,154 @@ export default function PlayPage() {
   }, [refresh]);
 
   const countdown = useMemo(() => {
-    if (!state?.round) return null;
+    if (!state?.round || now == null) return null;
     if (state.round.status !== "BETTING_OPEN") return null;
-    const ms = new Date(state.round.bettingClosesAt).getTime() - now;
+    const ms = new Date(state.round.bettingClosesAt).getTime() - (now ?? 0);
     return Math.max(0, Math.ceil(ms / 1000));
   }, [state, now]);
 
   const resolvedKind: WalletKind =
     walletKind ?? (Number(state?.cashCredits ?? 0) > 0 ? "REAL" : "PROMO");
 
-  async function place(slotIndex: number) {
-    if (!state?.round) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await api("/api/game/bet", {
-        method: "POST",
-        body: JSON.stringify({
-          roundId: state.round.id,
-          slotIndex,
-          stakeCredits: slotIndex === 0 ? stake0 : stake1,
-          walletKind: resolvedKind,
-          idempotencyKey: crypto.randomUUID(),
-        }),
-      });
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Bet failed");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const place = useCallback(
+    async (slotIndex: number) => {
+      if (!state?.round) return;
+      setBusy(true);
+      setError(null);
+      try {
+        await api("/api/game/bet", {
+          method: "POST",
+          body: JSON.stringify({
+            roundId: state.round.id,
+            slotIndex,
+            stakeCredits: slotIndex === 0 ? stake0 : stake1,
+            walletKind: resolvedKind,
+            idempotencyKey: crypto.randomUUID(),
+          }),
+        });
+        await refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Bet failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [state?.round, stake0, stake1, resolvedKind, refresh],
+  );
 
-  async function cash(betId: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      await api("/api/game/cashout", {
-        method: "POST",
-        body: JSON.stringify({ betId, idempotencyKey: crypto.randomUUID() }),
-      });
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Cash-out failed");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const cash = useCallback(
+    async (betId: string) => {
+      setBusy(true);
+      setError(null);
+      try {
+        await api("/api/game/cashout", {
+          method: "POST",
+          body: JSON.stringify({ betId, idempotencyKey: crypto.randomUUID() }),
+        });
+        await refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Cash-out failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [refresh],
+  );
 
   const crashed = state?.round?.status === "CRASHED" || state?.round?.status === "SETTLED";
-  const displayBp = crashed ? state?.round?.crashMultiplierBp : (state?.multiplierBp ?? 100);
-
-  const boardTone = crashed
-    ? "text-brand-danger"
-    : state?.round?.status === "RUNNING"
-      ? "text-brand-wine"
-      : "text-brand-wineDark";
+  const serverBp = crashed ? (state?.round?.crashMultiplierBp ?? 100) : (state?.multiplierBp ?? 100);
+  const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
 
   return (
-    <AppShell>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="kicker">Round {state?.round?.roundNumber ?? "—"}</p>
-              <h1 className="page-title">{statusLabel(state?.round?.status)}</h1>
-            </div>
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <span className={`h-2 w-2 rounded-full ${connected ? "bg-brand-success" : "bg-brand-sand"}`} />
-              <span className={connected ? "text-brand-success" : "text-brand-muted"}>
-                {connected ? "Live" : "Reconnecting"}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="card px-4 py-4">
-              <p className="kicker">Cash</p>
-              <p className="mt-2 text-xl font-semibold tabular-nums">{formatKes(state?.cashCredits)}</p>
-            </div>
-            <div className="card px-4 py-4">
-              <p className="kicker">Free credits</p>
-              <p className="mt-2 text-xl font-semibold tabular-nums">{formatKes(state?.promoCredits)}</p>
-            </div>
-            <div className="card col-span-2 px-4 py-4 sm:col-span-1">
-              <p className="kicker">Stake with</p>
-              <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-brand-sand/30 p-1">
-                <button
-                  type="button"
-                  onClick={() => setWalletKind("REAL")}
-                  className={`rounded-lg py-1.5 text-xs font-semibold ${
-                    resolvedKind === "REAL" ? "bg-brand-wine text-brand-paper" : "text-brand-wine"
-                  }`}
-                >
-                  Cash
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWalletKind("PROMO")}
-                  className={`rounded-lg py-1.5 text-xs font-semibold ${
-                    resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"
-                  }`}
-                >
-                  Free
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {resolvedKind === "PROMO" ? (
-            <p className="rounded-xl bg-brand-sand/25 px-4 py-3 text-sm text-brand-wineDark">
-              Free play: higher chance the round lasts past a public crash. Winnings stay as free credits.
-            </p>
-          ) : (
-            <p className="rounded-xl bg-white px-4 py-3 text-sm text-brand-muted ring-1 ring-brand-sand/50">
-              Cash bets use your M-PESA deposits (1 KES = 1 unit). Deposit first if this shows KES 0.
-            </p>
-          )}
-
-          <div className="relative flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-3xl border border-brand-sand/60 bg-brand-cream shadow-card">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(130,29,48,0.16),transparent_55%)]" />
-            <p className={`relative font-mono text-6xl font-semibold tabular-nums sm:text-7xl ${boardTone}`}>
-              {formatBp(displayBp)}
-            </p>
-            <p className="relative mt-4 text-sm font-medium text-brand-muted">
-              {countdown != null ? `Betting closes in ${countdown}s` : statusLabel(state?.round?.status)}
-            </p>
-          </div>
-          {error ? <p className="alert-error">{error}</p> : null}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Slot
-              slotIndex={0}
-              state={state}
-              stake={stake0}
-              setStake={setStake0}
-              onBet={place}
-              onCash={cash}
-              busy={busy}
-              walletKind={resolvedKind}
-            />
-            <Slot
-              slotIndex={1}
-              state={state}
-              stake={stake1}
-              setStake={setStake1}
-              onBet={place}
-              onCash={cash}
-              busy={busy}
-              walletKind={resolvedKind}
-            />
-          </div>
+    <AppShell dense>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(state?.cashCredits)}</span>
+          <span className="text-brand-muted">cash</span>
+          <span className="text-brand-sand">·</span>
+          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(state?.promoCredits)}</span>
+          <span className="text-brand-muted">free</span>
         </div>
-        <aside className="space-y-4">
-          <DepositPanel
-            onCredited={(cash) =>
-              setState((prev) => (prev ? { ...prev, cashCredits: cash, hasDeposited: true } : prev))
-            }
-          />
-          <section className="card p-5">
-            <h2 className="text-sm font-semibold text-brand-wine">This round</h2>
-            <ul className="mt-3 max-h-80 space-y-2 overflow-auto text-sm">
-              {(state?.bets ?? []).map((b) => (
-                <li key={b.id} className="flex justify-between gap-2 border-b border-brand-sand/40 py-2 last:border-0">
-                  <span className="truncate">
-                    {b.publicName}
-                    {b.walletKind === "PROMO" ? (
-                      <span className="ml-1 text-[10px] font-semibold uppercase text-brand-warning">free</span>
-                    ) : null}
-                  </span>
-                  <span className="shrink-0 tabular-nums text-brand-muted">
-                    {formatKes(b.stakeCredits)}
-                    {b.cashedOutAtBp != null ? ` → ${formatBp(b.cashedOutAtBp)}` : ` ${b.status}`}
-                  </span>
-                </li>
-              ))}
-              {(state?.bets ?? []).length === 0 ? (
-                <li className="py-6 text-center text-brand-muted">No public bets yet.</li>
-              ) : null}
-            </ul>
-          </section>
-          <p className="text-xs leading-relaxed text-brand-muted">
-            Commitment {state?.round?.serverSeedHash.slice(0, 16) ?? "—"}… ·{" "}
-            <a className="link-quiet" href="/fairness">
-              Verify fairness
-            </a>
-          </p>
-        </aside>
+        <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 rounded-lg bg-brand-sand/30 p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setWalletKind("REAL")}
+              className={`rounded-md px-3 py-1.5 ${resolvedKind === "REAL" ? "bg-brand-wine text-brand-paper" : "text-brand-wine"}`}
+            >
+              Cash
+            </button>
+            <button
+              type="button"
+              onClick={() => setWalletKind("PROMO")}
+              className={`rounded-md px-3 py-1.5 ${resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"}`}
+            >
+              Free
+            </button>
+          </div>
+          <a href="/wallet#deposit" className="btn-primary py-1.5 text-xs">
+            Deposit
+          </a>
+        </div>
       </div>
+
+      {resolvedKind === "PROMO" ? (
+        <p className="mb-3 rounded-lg bg-brand-sand/25 px-3 py-2 text-xs text-brand-wineDark">
+          Free play uses a gentler crash curve. Winnings stay as free credits.
+        </p>
+      ) : null}
+
+      <div className="overflow-hidden rounded-2xl bg-[#11131c] shadow-[0_20px_60px_rgba(0,0,0,0.28)] ring-1 ring-black/20">
+        <HistoryStrip rounds={history} />
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_300px]">
+          <FlightStage
+            status={state?.round?.status}
+            displayBp={displayBp}
+            countdown={countdown}
+            connected={connected}
+          />
+          <LiveBets bets={state?.bets ?? []} meId={meId} crashed={crashed} />
+        </div>
+        <div className="grid gap-2 border-t border-white/5 bg-[#0e1018] p-2 sm:grid-cols-2">
+          <BetSlip
+            slotIndex={0}
+            stake={stake0}
+            setStake={setStake0}
+            mine={state?.myBets.find((b) => b.slotIndex === 0)}
+            status={state?.round?.status}
+            roundId={state?.round?.id}
+            displayBp={displayBp}
+            busy={busy}
+            walletKind={resolvedKind}
+            available={resolvedKind === "REAL" ? Number(state?.cashCredits ?? 0) : Number(state?.promoCredits ?? 0)}
+            onBet={place}
+            onCash={cash}
+          />
+          <BetSlip
+            slotIndex={1}
+            stake={stake1}
+            setStake={setStake1}
+            mine={state?.myBets.find((b) => b.slotIndex === 1)}
+            status={state?.round?.status}
+            roundId={state?.round?.id}
+            displayBp={displayBp}
+            busy={busy}
+            walletKind={resolvedKind}
+            available={resolvedKind === "REAL" ? Number(state?.cashCredits ?? 0) : Number(state?.promoCredits ?? 0)}
+            onBet={place}
+            onCash={cash}
+          />
+        </div>
+      </div>
+
+      {error ? <p className="alert-error mt-3">{error}</p> : null}
+
+      <p className="mt-3 text-[11px] text-brand-muted">
+        Round {state?.round?.roundNumber ?? "—"} · commitment {state?.round?.serverSeedHash.slice(0, 16) ?? "—"}… ·{" "}
+        <a className="link-quiet" href="/fairness">
+          Verify fairness
+        </a>
+      </p>
     </AppShell>
   );
 }
