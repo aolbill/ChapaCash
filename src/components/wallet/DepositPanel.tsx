@@ -1,5 +1,6 @@
 "use client";
 
+import { patchCachedBalances } from "@/components/layout/session-cache";
 import { api } from "@/components/ui/api";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -30,6 +31,7 @@ export function DepositPanel({ onCredited }: { onCredited?: (cashCredits: string
           setPending(r.deposit);
           if (r.deposit.status === "SUCCESS") {
             setMsg(`KES ${r.deposit.amountKes} added to your cash wallet.`);
+            patchCachedBalances({ cashCredits: r.cashCredits, hasDeposited: true });
             onCredited?.(r.cashCredits);
           }
           if (r.deposit.status === "FAILED") {

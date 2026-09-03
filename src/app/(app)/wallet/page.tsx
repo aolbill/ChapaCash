@@ -1,5 +1,6 @@
 "use client";
 
+import { patchCachedBalances, useCachedSession } from "@/components/layout/session-cache";
 import { api, formatBp, formatKes } from "@/components/ui/api";
 import { DepositPanel } from "@/components/wallet/DepositPanel";
 import { WithdrawPanel } from "@/components/wallet/WithdrawPanel";
@@ -19,11 +20,13 @@ type Wallet = {
 };
 
 export default function WalletPage() {
+  const me = useCachedSession();
   const [data, setData] = useState<Wallet | null>(null);
 
   const load = useCallback(async () => {
     try {
       const w = await api<Wallet>("/api/wallet");
+      patchCachedBalances(w);
       setData(w);
     } catch {
       setData(null);
@@ -32,7 +35,7 @@ export default function WalletPage() {
 
   useEffect(() => {
     void load();
-    const poll = window.setInterval(() => void load(), 5000);
+    const poll = window.setInterval(() => void load(), 15_000);
     const onFocus = () => void load();
     window.addEventListener("focus", onFocus);
     return () => {
@@ -57,7 +60,7 @@ export default function WalletPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="card p-5">
             <p className="kicker">Cash (M-PESA)</p>
-            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.cashCredits)}</p>
+            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.cashCredits ?? me?.cashCredits)}</p>
             <p className="mt-2 text-sm text-brand-muted">
               {data?.hasDeposited
                 ? `Lifetime deposited ${formatKes(data.lifetimeDepositedKes)}`
@@ -66,7 +69,7 @@ export default function WalletPage() {
           </div>
           <div className="card p-5">
             <p className="kicker">Free credits</p>
-            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.promoCredits)}</p>
+            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.promoCredits ?? me?.promoCredits)}</p>
             <p className="mt-2 text-sm text-brand-muted">Practice play with a gentler crash curve.</p>
           </div>
           <div className="card p-5">

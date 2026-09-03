@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   return handleApi(requestId, async () => {
     await requireUser(req);
     await connectMongo();
-    const proofs = await FairnessProof.find().sort({ createdAt: -1 }).limit(20);
+    const proofs = await FairnessProof.find().sort({ createdAt: -1 }).limit(20).lean();
     return NextResponse.json({
       proofs: proofs.map((p) => ({
         roundId: p.roundId,

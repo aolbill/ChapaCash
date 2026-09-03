@@ -6,6 +6,7 @@ import { ApiError } from "@/domain/errors";
 import { PhoneError } from "@/domain/phone";
 import { rateLimit, clientKey } from "@/server/security/rateLimit";
 import { env } from "@/lib/env";
+import { userBalances } from "@/server/ledger/service";
 import { metrics } from "@/lib/metrics";
 
 export async function POST(req: Request) {
@@ -22,20 +23,21 @@ export async function POST(req: Request) {
         displayName: body.displayName,
         ageConfirmed: body.ageConfirmed,
       });
-      const { token, expiresAt } = await createSession(
-        String(user._id),
-        clientKey(req),
-        req.headers.get("user-agent"),
-      );
+      const userId = String(user._id);
+      const [{ token, expiresAt }, balances] = await Promise.all([
+        createSession(userId, clientKey(req), req.headers.get("user-agent")),
+        userBalances(userId),
+      ]);
       metrics.inc("registrations");
       const res = NextResponse.json({
         user: {
-          id: String(user._id),
+          id: userId,
           phone: user.phone,
           email: user.email,
           displayName: user.displayName,
           publicName: user.publicName,
           role: user.role,
+          ...balances,
         },
       });
       setSessionCookie(res, token, expiresAt);

@@ -11,11 +11,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     await requireAdmin(req);
     const { id } = await ctx.params;
     await connectMongo();
-    const round = await GameRound.findById(id);
+    const [round, events] = await Promise.all([
+      GameRound.findById(id).lean(),
+      RoundEvent.find({ roundId: id }).sort({ sequence: 1 }).lean(),
+    ]);
     if (!round) throw new ApiError("not_found", 404, "Round not found.");
-    const events = await RoundEvent.find({ roundId: id }).sort({ sequence: 1 });
     const archived = round.status === "ARCHIVED";
-    const proof = archived ? await FairnessProof.findOne({ roundId: id }) : null;
+    const proof = archived ? await FairnessProof.findOne({ roundId: id }).lean() : null;
     return NextResponse.json({
       round: {
         id: String(round._id),

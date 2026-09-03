@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { handleApi, readJson, requestIdFrom } from "@/lib/http";
-import { assertSameOrigin, createSession, setSessionCookie, verifyPassword, findUserByIdentifier, provisionPlayerAccounts } from "@/server/auth/service";
+import { assertSameOrigin, createSession, ensurePlayerAccounts, setSessionCookie, verifyPassword, findUserByIdentifier } from "@/server/auth/service";
 import { loginSchema } from "@/server/api/schemas";
 import { ApiError } from "@/domain/errors";
 import { rateLimit, clientKey } from "@/server/security/rateLimit";
 import { env } from "@/lib/env";
 import { metrics } from "@/lib/metrics";
 import { logger } from "@/lib/logger";
+import { userBalances } from "@/server/ledger/service";
 
 export async function POST(req: Request) {
   const requestId = requestIdFrom(req);
@@ -40,12 +41,11 @@ export async function POST(req: Request) {
     if (user.suspendedAt) {
       throw new ApiError("account_suspended", 403, "Account is suspended.");
     }
-    await provisionPlayerAccounts(String(user._id));
-    const { token, expiresAt } = await createSession(
-      String(user._id),
-      clientKey(req),
-      req.headers.get("user-agent"),
-    );
+    await ensurePlayerAccounts(String(user._id));
+    const [{ token, expiresAt }, balances] = await Promise.all([
+      createSession(String(user._id), clientKey(req), req.headers.get("user-agent")),
+      userBalances(String(user._id)),
+    ]);
     const res = NextResponse.json({
       user: {
         id: String(user._id),
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
         displayName: user.displayName,
         publicName: user.publicName,
         role: user.role,
+        ...balances,
       },
     });
     setSessionCookie(res, token, expiresAt);

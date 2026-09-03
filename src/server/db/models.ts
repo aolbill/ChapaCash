@@ -74,6 +74,7 @@ const RoundEventSchema = new Schema(
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
+GameRoundSchema.index({ status: 1, roundNumber: -1 });
 RoundEventSchema.index({ roundId: 1, sequence: 1 }, { unique: true });
 
 const BetSchema = new Schema(
@@ -91,6 +92,7 @@ const BetSchema = new Schema(
 );
 BetSchema.index({ roundId: 1, userId: 1, slotIndex: 1 }, { unique: true });
 BetSchema.index({ userId: 1, idempotencyKey: 1 }, { unique: true });
+BetSchema.index({ userId: 1, createdAt: -1 });
 
 const CashoutSchema = new Schema(
   {
@@ -105,6 +107,7 @@ const CashoutSchema = new Schema(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 CashoutSchema.index({ userId: 1, idempotencyKey: 1 }, { unique: true });
+CashoutSchema.index({ userId: 1, createdAt: -1 });
 
 const WalletAccountSchema = new Schema(
   {
@@ -138,6 +141,8 @@ const LedgerEntrySchema = new Schema(
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
+LedgerEntrySchema.index({ "postings.accountId": 1, createdAt: -1 });
+LedgerEntrySchema.index({ actorUserId: 1, createdAt: -1 });
 
 const FairnessProofSchema = new Schema(
   {
@@ -200,6 +205,8 @@ const DepositSchema = new Schema(
   },
   { timestamps: true },
 );
+DepositSchema.index({ userId: 1, createdAt: -1 });
+DepositSchema.index({ status: 1, createdAt: -1 });
 
 const WithdrawalSchema = new Schema(
   {
@@ -217,6 +224,7 @@ const WithdrawalSchema = new Schema(
   },
   { timestamps: true },
 );
+WithdrawalSchema.index({ userId: 1, createdAt: -1 });
 
 const EngineLockSchema = new Schema({
   key: { type: String, required: true, unique: true },

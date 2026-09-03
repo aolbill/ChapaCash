@@ -1,5 +1,6 @@
 "use client";
 
+import { setCachedSession } from "@/components/layout/session-cache";
 import { api } from "@/components/ui/api";
 import { PublicHeader } from "@/components/layout/PublicHeader";
 import Link from "next/link";
@@ -21,7 +22,18 @@ export default function RegisterPage() {
     setBusy(true);
     setError(null);
     try {
-      await api("/api/auth/register", {
+      const data = await api<{
+        user: {
+          id: string;
+          email: string;
+          displayName: string;
+          publicName: string;
+          role: string;
+          cashCredits: string;
+          promoCredits: string;
+          hasDeposited: boolean;
+        };
+      }>("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({
           phone,
@@ -31,7 +43,8 @@ export default function RegisterPage() {
           ageConfirmed,
         }),
       });
-      router.push("/play");
+      setCachedSession(data.user);
+      router.replace("/play");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

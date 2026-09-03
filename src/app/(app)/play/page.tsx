@@ -1,14 +1,50 @@
 "use client";
 
+import { getCachedSession, patchCachedBalances, useCachedSession } from "@/components/layout/session-cache";
 import { BetSlip } from "@/components/play/BetSlip";
 import { FlightStage, useLiveMultiplier } from "@/components/play/FlightStage";
 import { HistoryStrip } from "@/components/play/HistoryStrip";
 import { LiveBets } from "@/components/play/LiveBets";
 import type { HistoryRound, RoundStatePayload, WalletKind } from "@/components/play/types";
 import { api, formatKes } from "@/components/ui/api";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+function mergePlayState(
+  prev: RoundStatePayload | null,
+  payload: Partial<RoundStatePayload> & { cashCredits?: string; promoCredits?: string; hasDeposited?: boolean },
+): RoundStatePayload {
+  const cached = getCachedSession();
+  const cashCredits =
+    typeof payload.cashCredits === "string"
+      ? payload.cashCredits
+      : (prev?.cashCredits ?? cached?.cashCredits ?? "0");
+  const promoCredits =
+    typeof payload.promoCredits === "string"
+      ? payload.promoCredits
+      : (prev?.promoCredits ?? cached?.promoCredits ?? "0");
+  const hasDeposited =
+    typeof payload.hasDeposited === "boolean"
+      ? payload.hasDeposited
+      : (prev?.hasDeposited ?? cached?.hasDeposited ?? false);
+  if (typeof payload.cashCredits === "string" || typeof payload.promoCredits === "string") {
+    patchCachedBalances({ cashCredits, promoCredits, hasDeposited });
+  }
+  const bets = payload.bets ?? prev?.bets ?? [];
+  const meId = cached?.id;
+  return {
+    cashCredits,
+    promoCredits,
+    hasDeposited,
+    lifetimeDepositedKes: payload.lifetimeDepositedKes ?? prev?.lifetimeDepositedKes,
+    multiplierBp: payload.multiplierBp ?? prev?.multiplierBp ?? null,
+    bets,
+    myBets: meId ? bets.filter((b) => b.userId === meId) : (payload.myBets ?? prev?.myBets ?? []),
+    round: payload.round ?? prev?.round ?? null,
+  };
+}
 
 export default function PlayPage() {
+  const me = useCachedSession();
   const [state, setState] = useState<RoundStatePayload | null>(null);
   const [stake0, setStake0] = useState("100");
   const [stake1, setStake1] = useState("50");
@@ -17,14 +53,11 @@ export default function PlayPage() {
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [now, setNow] = useState<number | null>(null);
-  const [meId, setMeId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRound[]>([]);
-  const meIdRef = useRef<string | null>(null);
-  meIdRef.current = meId;
 
   const refresh = useCallback(async () => {
     const data = await api<RoundStatePayload>("/api/game/state");
-    setState(data);
+    setState((prev) => mergePlayState(prev, data));
   }, []);
 
   useEffect(() => {
@@ -33,9 +66,12 @@ export default function PlayPage() {
   }, []);
 
   useEffect(() => {
-    void api<{ rounds: HistoryRound[] }>("/api/game/rounds")
-      .then((d) => setHistory(d.rounds))
-      .catch(() => undefined);
+    const t = window.setTimeout(() => {
+      void api<{ rounds: HistoryRound[] }>("/api/game/rounds")
+        .then((d) => setHistory(d.rounds))
+        .catch(() => undefined);
+    }, 600);
+    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -53,10 +89,7 @@ export default function PlayPage() {
 
   useEffect(() => {
     let es: EventSource | null = null;
-    void api<{ user: { id: string } }>("/api/auth/me")
-      .then((d) => setMeId(d.user.id))
-      .catch(() => undefined);
-    void refresh().catch((e) => setError(String(e.message)));
+    let fallback: number | undefined;
     es = new EventSource("/api/stream");
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
@@ -69,18 +102,11 @@ export default function PlayPage() {
           hasDeposited?: boolean;
         } & Partial<RoundStatePayload>;
         if (payload.type === "snapshot" || payload.type === "state") {
-          const bets = payload.bets ?? [];
-          setState((prev) => ({
-            cashCredits: payload.cashCredits ?? prev?.cashCredits ?? "0",
-            promoCredits: payload.promoCredits ?? prev?.promoCredits ?? "0",
-            hasDeposited: payload.hasDeposited ?? prev?.hasDeposited ?? false,
-            multiplierBp: payload.multiplierBp ?? prev?.multiplierBp ?? null,
-            bets,
-            myBets: meIdRef.current
-              ? bets.filter((b) => b.userId === meIdRef.current)
-              : (payload.myBets ?? prev?.myBets ?? []),
-            round: payload.round ?? prev?.round ?? null,
-          }));
+          if (fallback) {
+            window.clearTimeout(fallback);
+            fallback = undefined;
+          }
+          setState((prev) => mergePlayState(prev, payload));
         }
         if (payload.type === "event") {
           void refresh();
@@ -89,7 +115,13 @@ export default function PlayPage() {
         /* ignore malformed frames */
       }
     };
-    return () => es?.close();
+    fallback = window.setTimeout(() => {
+      void refresh().catch((e) => setError(String(e.message)));
+    }, 2500);
+    return () => {
+      if (fallback) window.clearTimeout(fallback);
+      es?.close();
+    };
   }, [refresh]);
 
   const countdown = useMemo(() => {
@@ -99,8 +131,16 @@ export default function PlayPage() {
     return Math.max(0, Math.ceil(ms / 1000));
   }, [state, now]);
 
+  const cashCredits = state?.cashCredits ?? me?.cashCredits;
+  const promoCredits = state?.promoCredits ?? me?.promoCredits;
+  const meId = me?.id ?? null;
+  const myBets = useMemo(() => {
+    if (meId && state?.bets) return state.bets.filter((b) => b.userId === meId);
+    return state?.myBets ?? [];
+  }, [meId, state?.bets, state?.myBets]);
+
   const resolvedKind: WalletKind =
-    walletKind ?? (Number(state?.cashCredits ?? 0) > 0 ? "REAL" : "PROMO");
+    walletKind ?? (Number(cashCredits ?? 0) > 0 ? "REAL" : "PROMO");
 
   const place = useCallback(
     async (slotIndex: number) => {
@@ -155,10 +195,10 @@ export default function PlayPage() {
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
-          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(state?.cashCredits)}</span>
+          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(cashCredits)}</span>
           <span className="text-brand-muted">cash</span>
           <span className="text-brand-sand">·</span>
-          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(state?.promoCredits)}</span>
+          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(promoCredits)}</span>
           <span className="text-brand-muted">free</span>
         </div>
         <div className="flex items-center gap-2">
@@ -206,13 +246,13 @@ export default function PlayPage() {
             slotIndex={0}
             stake={stake0}
             setStake={setStake0}
-            mine={state?.myBets.find((b) => b.slotIndex === 0)}
+            mine={myBets.find((b) => b.slotIndex === 0)}
             status={state?.round?.status}
             roundId={state?.round?.id}
             displayBp={displayBp}
             busy={busy}
             walletKind={resolvedKind}
-            available={resolvedKind === "REAL" ? Number(state?.cashCredits ?? 0) : Number(state?.promoCredits ?? 0)}
+            available={resolvedKind === "REAL" ? Number(cashCredits ?? 0) : Number(promoCredits ?? 0)}
             onBet={place}
             onCash={cash}
           />
@@ -220,13 +260,13 @@ export default function PlayPage() {
             slotIndex={1}
             stake={stake1}
             setStake={setStake1}
-            mine={state?.myBets.find((b) => b.slotIndex === 1)}
+            mine={myBets.find((b) => b.slotIndex === 1)}
             status={state?.round?.status}
             roundId={state?.round?.id}
             displayBp={displayBp}
             busy={busy}
             walletKind={resolvedKind}
-            available={resolvedKind === "REAL" ? Number(state?.cashCredits ?? 0) : Number(state?.promoCredits ?? 0)}
+            available={resolvedKind === "REAL" ? Number(cashCredits ?? 0) : Number(promoCredits ?? 0)}
             onBet={place}
             onCash={cash}
           />

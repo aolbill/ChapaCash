@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   return handleApi(requestId, async () => {
     const user = await requireUser(req);
     await connectMongo();
-    const sessions = await Session.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20);
+    const sessions = await Session.find({ userId: user.id }).sort({ createdAt: -1 }).limit(20).lean();
     return NextResponse.json({
       sessions: sessions.map((s) => ({
         id: String(s._id),

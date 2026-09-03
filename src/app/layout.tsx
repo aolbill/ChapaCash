@@ -5,15 +5,18 @@ import { SITE_BANNER, SITE_NAME } from "@/domain/copy";
 
 const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
+  preload: true,
 });
 
 const mono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["600", "700"],
   variable: "--font-mono",
   display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {

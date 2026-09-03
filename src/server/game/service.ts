@@ -31,6 +31,9 @@ function growth(): string {
   return env.GROWTH_PER_SECOND;
 }
 
+const liveSeq = new Map<string, number>();
+let liveRound: Awaited<ReturnType<typeof GameRound.findOne>> | null = null;
+
 function promoCrashBpFor(round: {
   serverSeed: string;
   clientSeed: string;
@@ -73,9 +76,9 @@ async function emit(
   payload: Record<string, unknown>,
   persist = true,
 ) {
-  await connectMongo();
-  let seq = 0;
+  let seq = liveSeq.get(roundId) ?? 0;
   if (persist) {
+    await connectMongo();
     const updated = await GameRound.findByIdAndUpdate(
       roundId,
       { $inc: { lastSequence: 1 } },
@@ -83,10 +86,8 @@ async function emit(
     );
     if (!updated) return 0;
     seq = updated.lastSequence;
+    liveSeq.set(roundId, seq);
     await RoundEvent.create({ roundId, sequence: seq, type, payload });
-  } else {
-    const round = await GameRound.findById(roundId);
-    seq = round?.lastSequence ?? 0;
   }
   publishEvent({ roundId, seq, type, ts: new Date().toISOString(), payload });
   return seq;
@@ -112,6 +113,8 @@ export async function createScheduledRound(): Promise<void> {
       bettingOpensAt,
       bettingClosesAt,
     });
+    liveRound = round;
+    liveSeq.set(String(round._id), 0);
     await emit(String(round._id), "SCHEDULED", {
       roundNumber,
       serverSeedHash: round.serverSeedHash,
@@ -126,8 +129,12 @@ export async function createScheduledRound(): Promise<void> {
 
 export async function tickEngine(now = new Date()): Promise<void> {
   await connectMongo();
-  const latest = await GameRound.findOne().sort({ roundNumber: -1 });
+  if (!liveRound) {
+    liveRound = await GameRound.findOne().sort({ roundNumber: -1 });
+  }
+  const latest = liveRound;
   if (!latest || latest.status === "ARCHIVED") {
+    liveRound = null;
     await createScheduledRound();
     return;
   }
@@ -188,6 +195,7 @@ async function crashAndSettle(roundId: string, crashBp: number, now: Date) {
     { new: true },
   );
   if (!updated) return;
+  liveRound = updated;
   await emit(roundId, "CRASHED", { crashMultiplierBp: crashBp });
   metrics.inc("rounds_crashed");
   await settleRound(roundId);
@@ -268,8 +276,12 @@ export async function settleRound(roundId: string): Promise<void> {
   const settled = await GameRound.findOneAndUpdate(
     { _id: roundId, status: "CRASHED" },
     { $set: { status: "SETTLED", settledAt: new Date() } },
+    { new: true },
   );
-  if (settled) await emit(roundId, "SETTLED", {});
+  if (settled) {
+    liveRound = settled;
+    await emit(roundId, "SETTLED", {});
+  }
 }
 
 async function archiveRound(roundId: string) {
@@ -301,6 +313,8 @@ async function archiveRound(roundId: string) {
     { _id: roundId, status: "SETTLED" },
     { $set: { status: "ARCHIVED", archivedAt: new Date() } },
   );
+  liveRound = null;
+  liveSeq.delete(roundId);
   await emit(roundId, "ARCHIVED", {
     serverSeed: derived.serverSeed,
     serverSeedHash: derived.serverSeedHash,
@@ -329,10 +343,12 @@ export async function placeBet(args: {
     throw new ApiError("invalid_input", 400, "Stake is outside allowed range.");
   }
 
-  const existing = await Bet.findOne({ userId: args.userId, idempotencyKey: args.idempotencyKey });
+  const [existing, balances, round] = await Promise.all([
+    Bet.findOne({ userId: args.userId, idempotencyKey: args.idempotencyKey }),
+    userBalances(args.userId),
+    GameRound.findById(args.roundId),
+  ]);
   if (existing) return { bet: existing, replay: true };
-
-  const balances = await userBalances(args.userId);
   const walletKind: WalletKind =
     args.walletKind ?? (BigInt(balances.cashCredits) > 0n ? "REAL" : "PROMO");
   if (walletKind === "REAL" && BigInt(balances.cashCredits) < args.stakeCredits) {
@@ -348,7 +364,6 @@ export async function placeBet(args: {
     throw new ApiError("insufficient_credits", 400, "Not enough free credits for this stake.");
   }
 
-  const round = await GameRound.findById(args.roundId);
   if (!round) throw new ApiError("not_found", 404, "Round not found.");
   if (round.status !== "BETTING_OPEN") {
     throw new ApiError("betting_closed", 409, "Betting is not open for this round.");
@@ -401,14 +416,14 @@ export async function placeBet(args: {
     throw error;
   }
 
-  await writeAudit({
+  void writeAudit({
     actorUserId: args.userId,
     action: "bet.place",
     reason: walletKind === "PROMO" ? "Player placed a free-credit bet" : "Player placed a cash bet",
     requestId: args.requestId,
     entityType: "Bet",
     entityId: String(bet._id),
-  });
+  }).catch((error) => logger.warn("audit_failed", { err: String(error) }));
   await emit(args.roundId, "TICK", { publicBet: true, slotIndex: args.slotIndex }, false);
   return { bet, replay: false };
 }
@@ -421,13 +436,15 @@ export async function cashOut(args: {
 }) {
   await connectMongo();
   metrics.inc("cashout_requests");
-  const existing = await Cashout.findOne({
-    userId: args.userId,
-    idempotencyKey: args.idempotencyKey,
-  });
+  const [existing, bet] = await Promise.all([
+    Cashout.findOne({
+      userId: args.userId,
+      idempotencyKey: args.idempotencyKey,
+    }),
+    Bet.findById(args.betId),
+  ]);
   if (existing) return { cashout: existing, replay: true };
 
-  const bet = await Bet.findById(args.betId);
   if (!bet || bet.userId !== args.userId) {
     throw new ApiError("not_found", 404, "Bet not found.");
   }
@@ -507,28 +524,46 @@ export async function cashOut(args: {
   });
   cashout.ledgerEntryId = String(entry._id);
   await cashout.save();
-  await writeAudit({
+  void writeAudit({
     actorUserId: args.userId,
     action: "bet.cashout",
     reason: "Player cashed out a virtual-credit bet",
     requestId: args.requestId,
     entityType: "Cashout",
     entityId: String(cashout._id),
-  });
+  }).catch((error) => logger.warn("audit_failed", { err: String(error) }));
   await emit(String(bet.roundId), "TICK", { publicCashout: true, multiplierBp: decision.multiplierBp }, false);
   return { cashout, replay: false };
 }
 
+let publicStateCache: { at: number; value: Awaited<ReturnType<typeof loadPublicRoundState>> } | null = null;
+
 export async function publicRoundState() {
+  const now = Date.now();
+  if (publicStateCache && now - publicStateCache.at < 400) return publicStateCache.value;
+  const value = await loadPublicRoundState();
+  publicStateCache = { at: now, value };
+  return value;
+}
+
+async function loadPublicRoundState() {
   await connectMongo();
-  const round = await GameRound.findOne({ status: { $ne: "ARCHIVED" } }).sort({
-    roundNumber: -1,
-  });
-  if (!round) return { round: null, bets: [], multiplierBp: null as number | null };
-  const bets = await Bet.find({ roundId: String(round._id) }).sort({ createdAt: 1 });
-  const users = await User.find({ _id: { $in: bets.map((b) => b.userId) } });
+  const round = await GameRound.findOne().sort({ roundNumber: -1 }).lean();
+  if (!round || round.status === "ARCHIVED") {
+    return { round: null, bets: [], multiplierBp: null as number | null };
+  }
+  const bets = await Bet.find({ roundId: String(round._id) }).sort({ createdAt: 1 }).lean();
+  const betIds = bets.map((b) => String(b._id));
+  const userIds = [...new Set(bets.map((b) => b.userId))];
+  const [users, cashouts] = await Promise.all([
+    userIds.length
+      ? User.find({ _id: { $in: userIds } }).select("publicName").lean()
+      : Promise.resolve([]),
+    betIds.length
+      ? Cashout.find({ betId: { $in: betIds } }).select("betId multiplierBp payoutCredits").lean()
+      : Promise.resolve([]),
+  ]);
   const names = new Map(users.map((u) => [String(u._id), u.publicName]));
-  const cashouts = await Cashout.find({ betId: { $in: bets.map((b) => String(b._id)) } });
   const cashByBet = new Map(cashouts.map((c) => [c.betId, c]));
 
   let multiplierBp: number | null = null;
@@ -580,13 +615,14 @@ export async function publicRoundState() {
 
 export async function reconnectSnapshot(afterSeq: number) {
   const state = await publicRoundState();
-  if (!state.round) return { ...state, events: [] };
+  if (!state.round || afterSeq <= 0) return { ...state, events: [] };
   const events = await RoundEvent.find({
     roundId: state.round.id,
     sequence: { $gt: afterSeq },
   })
     .sort({ sequence: 1 })
-    .limit(200);
+    .limit(200)
+    .lean();
   return {
     ...state,
     events: events.map((e) => ({

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { handleApi, requestIdFrom } from "@/lib/http";
 import { requireAdmin } from "@/server/auth/service";
 import { connectMongo } from "@/lib/mongo";
-import { mongoPing } from "@/lib/mongo";
 import { Bet, Cashout, Deposit, GameRound, User, WalletAccount } from "@/server/db/models";
 import { metrics } from "@/lib/metrics";
 import { rateLimit } from "@/server/security/rateLimit";
@@ -14,41 +13,52 @@ export async function GET(req: Request) {
     const admin = await requireAdmin(req);
     await rateLimit(`admin:${admin.id}`, Number(env.RATE_LIMIT_ADMIN_PER_MIN));
     await connectMongo();
-    const round = await GameRound.findOne({ status: { $ne: "ARCHIVED" } }).sort({ roundNumber: -1 });
-    const recent = await GameRound.find().sort({ roundNumber: -1 }).limit(12);
-    const stakeAgg = await Bet.aggregate([{ $group: { _id: null, total: { $sum: { $toLong: "$stakeCredits" } } } }]);
-    const payoutAgg = await Cashout.aggregate([
-      { $group: { _id: null, total: { $sum: { $toLong: "$payoutCredits" } } } },
-    ]);
-    const users = await User.countDocuments();
-    const successfulDeposits = await Deposit.find({ status: "SUCCESS" });
-    let depositedKes = 0;
-    for (const d of successfulDeposits) depositedKes += Number(d.amountKes) || 0;
-    const pendingDeposits = await Deposit.countDocuments({ status: "PENDING" });
-    const cashWallets = await WalletAccount.find({ kind: "USER_WALLET", userId: { $ne: null } });
-    let cashInWallets = 0;
-    for (const w of cashWallets) cashInWallets += Number(w.cachedBalanceCredits) || 0;
+    const [round, recent, stakeAgg, payoutAgg, users, depositStats, pendingDeposits, cashAgg] =
+      await Promise.all([
+        GameRound.findOne().sort({ roundNumber: -1 }).select("status roundNumber").lean(),
+        GameRound.find().sort({ roundNumber: -1 }).limit(12).select("status roundNumber crashMultiplierBp").lean(),
+        Bet.aggregate([{ $group: { _id: null, total: { $sum: { $toLong: "$stakeCredits" } } } }]),
+        Cashout.aggregate([{ $group: { _id: null, total: { $sum: { $toLong: "$payoutCredits" } } } }]),
+        User.countDocuments(),
+        Deposit.aggregate([
+          { $match: { status: "SUCCESS" } },
+          { $group: { _id: null, n: { $sum: 1 }, kes: { $sum: { $toDouble: "$amountKes" } } } },
+        ]),
+        Deposit.countDocuments({ status: "PENDING" }),
+        WalletAccount.aggregate([
+          { $match: { kind: "USER_WALLET", userId: { $ne: null } } },
+          { $group: { _id: null, total: { $sum: { $toDouble: "$cachedBalanceCredits" } } } },
+        ]),
+      ]);
+    const active = round && round.status !== "ARCHIVED" ? round : null;
     return NextResponse.json({
       playMoney: true,
       admin: { id: admin.id, email: admin.email },
-      mongo: await mongoPing(),
-      depositedKes: String(depositedKes),
+      mongo: true,
+      depositedKes: String(depositStats[0]?.kes ?? 0),
       pendingDeposits,
-      cashInWallets: String(cashInWallets),
-      successfulDeposits: successfulDeposits.length,
-      activeRound: round
+      cashInWallets: String(cashAgg[0]?.total ?? 0),
+      successfulDeposits: depositStats[0]?.n ?? 0,
+      activeRound: active
         ? {
-            id: String(round._id),
-            status: round.status,
-            roundNumber: round.roundNumber,
-            crashHidden: round.status === "RUNNING" || round.status === "BETTING_OPEN" || round.status === "BETTING_CLOSED" || round.status === "SCHEDULED",
+            id: String(active._id),
+            status: active.status,
+            roundNumber: active.roundNumber,
+            crashHidden:
+              active.status === "RUNNING" ||
+              active.status === "BETTING_OPEN" ||
+              active.status === "BETTING_CLOSED" ||
+              active.status === "SCHEDULED",
           }
         : null,
       recentRounds: recent.map((r) => ({
         id: String(r._id),
         roundNumber: r.roundNumber,
         status: r.status,
-        crashMultiplierBp: r.status === "ARCHIVED" || r.status === "SETTLED" || r.status === "CRASHED" ? r.crashMultiplierBp : null,
+        crashMultiplierBp:
+          r.status === "ARCHIVED" || r.status === "SETTLED" || r.status === "CRASHED"
+            ? r.crashMultiplierBp
+            : null,
       })),
       totalVirtualBets: String(stakeAgg[0]?.total ?? 0),
       totalVirtualPayouts: String(payoutAgg[0]?.total ?? 0),

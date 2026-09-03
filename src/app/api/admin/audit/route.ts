@@ -20,7 +20,7 @@ export async function GET(req: Request) {
           ],
         }
       : {};
-    const logs = await AuditLog.find(filter).sort({ createdAt: -1 }).limit(100);
+    const logs = await AuditLog.find(filter).sort({ createdAt: -1 }).limit(100).lean();
     return NextResponse.json({
       logs: logs.map((l) => ({
         id: String(l._id),
