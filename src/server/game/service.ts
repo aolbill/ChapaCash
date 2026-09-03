@@ -32,6 +32,10 @@ function growth(): string {
 
 const liveSeq = new Map<string, number>();
 
+function findActiveRound() {
+  return GameRound.findOne({ status: { $ne: "ARCHIVED" } }).sort({ roundNumber: 1 });
+}
+
 function promoCrashBpFor(round: {
   serverSeed: string;
   clientSeed: string;
@@ -93,6 +97,7 @@ async function emit(
 
 export async function createScheduledRound(): Promise<void> {
   await connectMongo();
+  if (await GameRound.exists({ status: { $ne: "ARCHIVED" } })) return;
   const last = await GameRound.findOne().sort({ roundNumber: -1 });
   const roundNumber = (last?.roundNumber ?? 0) + 1;
   const serverSeed = generateServerSeed();
@@ -110,6 +115,7 @@ export async function createScheduledRound(): Promise<void> {
       algorithmVersion: env.FAIRNESS_ALGORITHM_VERSION || ALGORITHM_V1,
       bettingOpensAt,
       bettingClosesAt,
+      liveKey: "current",
     });
     liveSeq.set(String(round._id), 0);
     await emit(String(round._id), "SCHEDULED", {
@@ -126,8 +132,8 @@ export async function createScheduledRound(): Promise<void> {
 
 export async function tickEngine(now = new Date()): Promise<void> {
   await connectMongo();
-  const latest = await GameRound.findOne().sort({ roundNumber: -1 });
-  if (!latest || latest.status === "ARCHIVED") {
+  const latest = await findActiveRound();
+  if (!latest) {
     await createScheduledRound();
     return;
   }
@@ -318,7 +324,7 @@ async function archiveRound(roundId: string) {
   );
   await GameRound.updateOne(
     { _id: roundId, status: "SETTLED" },
-    { $set: { status: "ARCHIVED", archivedAt: new Date() } },
+    { $set: { status: "ARCHIVED", archivedAt: new Date() }, $unset: { liveKey: 1 } },
   );
   liveSeq.delete(roundId);
   await emit(roundId, "ARCHIVED", {
@@ -554,8 +560,10 @@ export async function publicRoundState() {
 
 async function loadPublicRoundState() {
   await connectMongo();
-  const round = await GameRound.findOne().sort({ roundNumber: -1 }).lean();
-  if (!round || round.status === "ARCHIVED") {
+  const round = await GameRound.findOne({ status: { $ne: "ARCHIVED" } })
+    .sort({ roundNumber: 1 })
+    .lean();
+  if (!round) {
     return { round: null, bets: [], multiplierBp: null as number | null };
   }
   const bets = await Bet.find({ roundId: String(round._id) }).sort({ createdAt: 1 }).lean();
