@@ -31,11 +31,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           round.status === "CRASHED" || round.status === "SETTLED" || round.status === "ARCHIVED"
             ? round.crashMultiplierBp
             : null,
-        serverSeed: archived ? round.serverSeed : null,
+        serverSeed: proof?.seedRevealed === false ? null : archived ? round.serverSeed : null,
       },
       events: events.map((e) => ({ seq: e.sequence, type: e.type, payload: e.payload, ts: e.createdAt })),
       proof,
-      note: "Admins cannot change outcomes or balances.",
+      note: "Crash points follow the admin series. Balances cannot be edited here.",
     });
   });
 }

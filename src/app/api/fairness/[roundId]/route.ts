@@ -27,11 +27,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ roundId: string
     }
     const proof = await FairnessProof.findOne({ roundId }).lean();
     if (!proof) throw new ApiError("not_found", 404, "Proof not found.");
+    const seedRevealed = proof.seedRevealed !== false && Boolean(proof.serverSeed);
     return NextResponse.json({
-      revealed: true,
+      revealed: seedRevealed,
       algorithmVersion: proof.algorithmVersion,
       serverSeedHash: proof.serverSeedHash,
-      serverSeed: proof.serverSeed,
+      serverSeed: seedRevealed ? proof.serverSeed : null,
       clientSeed: proof.clientSeed,
       nonce: proof.nonce,
       crashMultiplierBp: proof.crashMultiplierBp,

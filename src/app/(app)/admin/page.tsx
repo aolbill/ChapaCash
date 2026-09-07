@@ -31,7 +31,7 @@ export default function AdminPage() {
 
   return (
       <div className="mx-auto max-w-4xl space-y-8">
-        <PageHeader kicker="Ops" title="Admin" description="No outcome controls. No direct balance edits." actions={<AdminNav />} />
+        <PageHeader kicker="Ops" title="Admin" description="Multiplier series is committed in advance. Preview it under Series." actions={<AdminNav />} />
         {error ? <p className="alert-error">{error}</p> : null}
         {data ? (
           <>

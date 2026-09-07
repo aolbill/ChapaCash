@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { handleApi, requestIdFrom } from "@/lib/http";
-import { requireUser } from "@/server/auth/service";
 import { connectMongo } from "@/lib/mongo";
 import { GameRound } from "@/server/db/models";
 
 export async function GET(req: Request) {
   const requestId = requestIdFrom(req);
   return handleApi(requestId, async () => {
-    await requireUser(req);
     await connectMongo();
     const rounds = await GameRound.find({ status: "ARCHIVED" })
       .sort({ roundNumber: -1 })

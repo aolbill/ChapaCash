@@ -77,6 +77,7 @@ export function AdminNav() {
   const path = usePathname();
   const items = [
     { href: "/admin", label: "Overview", exact: true },
+    { href: "/admin/series", label: "Series", exact: false },
     { href: "/admin/users", label: "Users", exact: false },
     { href: "/admin/audit", label: "Audit", exact: false },
   ];

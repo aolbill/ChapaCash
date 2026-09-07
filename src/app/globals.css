@@ -92,3 +92,21 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes playPromo {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+body:has(.play-root) {
+  background: #0d0d0f;
+  color: #f2f3f7;
+  overflow: hidden;
+}
+body:has(.play-root) .site-banner {
+  display: none;
+}

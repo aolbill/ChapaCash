@@ -1,6 +1,7 @@
 "use client";
 
 import { formatBp } from "@/components/ui/api";
+import { SITE_NAME } from "@/domain/copy";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const GROWTH = 0.06;
@@ -38,7 +39,7 @@ function PlaneMark({ crashed }: { crashed: boolean }) {
     <svg
       viewBox="0 0 56 28"
       className={`h-8 w-16 drop-shadow-[0_0_8px_rgba(225,29,46,0.8)] sm:h-10 sm:w-20 ${
-        crashed ? "opacity-0 translate-x-16 -translate-y-10 -rotate-12 transition-all duration-700" : ""
+        crashed ? "translate-x-16 -translate-y-10 -rotate-12 opacity-0 transition-all duration-700" : ""
       }`}
       aria-hidden
     >
@@ -82,11 +83,15 @@ export function FlightStage({
   displayBp,
   countdown,
   connected,
+  freePlay,
+  playerCount,
 }: {
   status: string | undefined;
   displayBp: number;
   countdown: number | null;
   connected: boolean;
+  freePlay?: boolean;
+  playerCount?: number;
 }) {
   const crashed = status === "CRASHED" || status === "SETTLED";
   const flying = status === "RUNNING";
@@ -99,7 +104,12 @@ export function FlightStage({
   const ring = countdown != null ? Math.max(0, Math.min(1, countdown / 8)) : 0;
 
   return (
-    <div className="relative min-h-[280px] overflow-hidden bg-[#11131c] sm:min-h-[360px] lg:min-h-[420px]">
+    <div className="relative min-h-[240px] overflow-hidden rounded-2xl bg-[#11131c] max-[820px]:h-[44vh] max-[820px]:min-h-[240px] sm:min-h-[320px] lg:min-h-0 lg:flex-1">
+      {freePlay ? (
+        <p className="absolute inset-x-0 top-0 z-[6] bg-gradient-to-r from-[#a9812a] via-[#e6c05a] to-[#a9812a] py-1 text-center text-[11px] font-extrabold tracking-[2px] text-black">
+          FREE PLAY
+        </p>
+      ) : null}
       <div
         className="pointer-events-none absolute inset-0 opacity-40"
         style={{
@@ -109,6 +119,10 @@ export function FlightStage({
         }}
       />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
+
+      <p className="pointer-events-none absolute inset-0 z-[1] grid select-none place-items-center text-5xl font-black tracking-[0.28em] text-white/[0.06] sm:text-7xl">
+        {SITE_NAME.toUpperCase()}
+      </p>
 
       <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" aria-hidden>
         {showTrail ? (
@@ -130,14 +144,14 @@ export function FlightStage({
 
       {showTrail ? (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+          className="pointer-events-none absolute z-[4] -translate-x-1/2 -translate-y-1/2"
           style={{ left: `${(tip.x / VB_W) * 100}%`, top: `${(tip.y / VB_H) * 100}%` }}
         >
           <PlaneMark crashed={crashed} />
         </div>
       ) : null}
 
-      <div className="relative z-10 flex h-full min-h-[280px] flex-col items-center justify-center sm:min-h-[360px] lg:min-h-[420px]">
+      <div className="relative z-10 flex h-full min-h-[240px] flex-col items-center justify-center max-[820px]:min-h-[44vh] sm:min-h-[320px] lg:min-h-full">
         {waiting ? (
           <div className="flex flex-col items-center gap-3">
             <div className="relative grid h-28 w-28 place-items-center">
@@ -158,14 +172,14 @@ export function FlightStage({
                 {countdown != null ? countdown : "—"}
               </span>
             </div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/55">
               {status === "BETTING_CLOSED" ? "Starting" : "Waiting for next round"}
             </p>
           </div>
         ) : (
           <>
             {crashed ? (
-              <p className="mb-1 text-sm font-extrabold uppercase tracking-[0.28em] text-[#ff4d57]">Flew away</p>
+              <p className="mb-1 text-sm font-extrabold uppercase tracking-[0.28em] text-[#ff4d57]">Flew away!</p>
             ) : null}
             <p
               className={`font-mono text-6xl font-bold tabular-nums tracking-tight sm:text-7xl lg:text-8xl ${
@@ -178,10 +192,15 @@ export function FlightStage({
         )}
       </div>
 
-      <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 text-[11px] font-medium text-white/40">
+      <div className="absolute bottom-3 left-3 z-[6] flex items-center gap-2 text-[11px] font-medium text-white/40">
         <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-emerald-400" : "bg-white/30"}`} />
         {connected ? "Network" : "Reconnecting"}
       </div>
+      {playerCount != null ? (
+        <div className="absolute bottom-3 right-4 z-[6] flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-1 text-xs text-white/45">
+          {playerCount} playing
+        </div>
+      ) : null}
     </div>
   );
 }

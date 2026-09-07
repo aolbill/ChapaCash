@@ -73,3 +73,8 @@ export const suspendSchema = z.object({
   reason: z.string().min(3).max(500),
   suspended: z.boolean(),
 });
+
+export const seriesRotateSchema = z.object({
+  action: z.literal("rotate"),
+  serverSeed: z.string().min(16).max(128).optional(),
+});

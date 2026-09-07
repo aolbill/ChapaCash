@@ -1,13 +1,7 @@
 import { connectMongo } from "@/lib/mongo";
 import { env } from "@/lib/env";
 import { ApiError } from "@/domain/errors";
-import {
-  ALGORITHM_V1,
-  commitServerSeed,
-  deriveCrashMultiplierBp,
-  derivePromoCrashMultiplierBp,
-  generateServerSeed,
-} from "@/domain/fairness";
+import { deriveCrashMultiplierBp, derivePromoCrashMultiplierBp } from "@/domain/fairness";
 import {
   decideCashout,
   elapsedMsUntilCrash,
@@ -25,6 +19,7 @@ import { writeAudit } from "@/server/admin/audit";
 import { metrics } from "@/lib/metrics";
 import { logger } from "@/lib/logger";
 import { Bet, Cashout, FairnessProof, GameRound, RoundEvent, User } from "@/server/db/models";
+import { ensureActiveSeries, seriesIsRevealed } from "@/server/game/series";
 
 function growth(): string {
   return env.GROWTH_PER_SECOND;
@@ -100,7 +95,7 @@ export async function createScheduledRound(): Promise<void> {
   if (await GameRound.exists({ status: { $ne: "ARCHIVED" } })) return;
   const last = await GameRound.findOne().sort({ roundNumber: -1 });
   const roundNumber = (last?.roundNumber ?? 0) + 1;
-  const serverSeed = generateServerSeed();
+  const series = await ensureActiveSeries();
   const now = Date.now();
   const bettingOpensAt = new Date(now + 400);
   const bettingClosesAt = new Date(now + 400 + Number(env.BETTING_WINDOW_MS));
@@ -109,13 +104,14 @@ export async function createScheduledRound(): Promise<void> {
       roundNumber,
       status: "SCHEDULED",
       nonce: String(roundNumber),
-      clientSeed: env.FAIRNESS_CLIENT_SEED,
-      serverSeedHash: commitServerSeed(serverSeed),
-      serverSeed,
-      algorithmVersion: env.FAIRNESS_ALGORITHM_VERSION || ALGORITHM_V1,
+      clientSeed: series.clientSeed,
+      serverSeedHash: series.serverSeedHash,
+      serverSeed: series.serverSeed,
+      algorithmVersion: series.algorithmVersion,
       bettingOpensAt,
       bettingClosesAt,
       liveKey: "current",
+      seriesId: String(series._id),
     });
     liveSeq.set(String(round._id), 0);
     await emit(String(round._id), "SCHEDULED", {
@@ -306,6 +302,7 @@ async function archiveRound(roundId: string) {
     clientSeed: round.clientSeed,
     nonce: round.nonce,
   });
+  const seedRevealed = round.seriesId ? await seriesIsRevealed(round.serverSeedHash) : true;
   await FairnessProof.updateOne(
     { roundId },
     {
@@ -313,11 +310,12 @@ async function archiveRound(roundId: string) {
         roundId,
         algorithmVersion: derived.algorithmVersion,
         serverSeedHash: derived.serverSeedHash,
-        serverSeed: derived.serverSeed,
+        serverSeed: seedRevealed ? derived.serverSeed : "",
         clientSeed: derived.clientSeed,
         nonce: derived.nonce,
         crashMultiplierBp: derived.crashMultiplierBp,
         hmacPreview: derived.hmacHex.slice(0, 16),
+        seedRevealed,
       },
     },
     { upsert: true },
@@ -328,12 +326,13 @@ async function archiveRound(roundId: string) {
   );
   liveSeq.delete(roundId);
   await emit(roundId, "ARCHIVED", {
-    serverSeed: derived.serverSeed,
+    serverSeed: seedRevealed ? derived.serverSeed : null,
     serverSeedHash: derived.serverSeedHash,
     clientSeed: derived.clientSeed,
     nonce: derived.nonce,
     crashMultiplierBp: derived.crashMultiplierBp,
     algorithmVersion: derived.algorithmVersion,
+    seedRevealed,
   });
 }
 

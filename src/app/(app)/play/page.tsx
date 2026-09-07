@@ -1,13 +1,22 @@
 "use client";
 
 import { getCachedSession, patchCachedBalances, useCachedSession } from "@/components/layout/session-cache";
+import { AuthModal } from "@/components/play/AuthModal";
 import { BetSlip } from "@/components/play/BetSlip";
 import { FlightStage, useLiveMultiplier } from "@/components/play/FlightStage";
 import { HistoryStrip } from "@/components/play/HistoryStrip";
 import { LiveBets } from "@/components/play/LiveBets";
+import { PlayHeader } from "@/components/play/PlayHeader";
 import type { HistoryRound, RoundStatePayload, WalletKind } from "@/components/play/types";
-import { api, formatKes } from "@/components/ui/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { api } from "@/components/ui/api";
+import { Montserrat } from "next/font/google";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["600", "700", "800", "900"],
+  display: "swap",
+});
 
 function mergePlayState(
   prev: RoundStatePayload | null,
@@ -26,9 +35,6 @@ function mergePlayState(
     typeof payload.hasDeposited === "boolean"
       ? payload.hasDeposited
       : (prev?.hasDeposited ?? cached?.hasDeposited ?? false);
-  if (typeof payload.cashCredits === "string" || typeof payload.promoCredits === "string") {
-    patchCachedBalances({ cashCredits, promoCredits, hasDeposited });
-  }
   const bets = payload.bets ?? prev?.bets ?? [];
   const meId = cached?.id;
   return {
@@ -43,26 +49,54 @@ function mergePlayState(
   };
 }
 
+function applyPlayState(
+  payload: Partial<RoundStatePayload> & { cashCredits?: string; promoCredits?: string; hasDeposited?: boolean },
+  setState: Dispatch<SetStateAction<RoundStatePayload | null>>,
+) {
+  setState((prev) => mergePlayState(prev, payload));
+  if (typeof payload.cashCredits !== "string" && typeof payload.promoCredits !== "string") return;
+  queueMicrotask(() => {
+    patchCachedBalances({
+      cashCredits: payload.cashCredits,
+      promoCredits: payload.promoCredits,
+      hasDeposited: payload.hasDeposited,
+    });
+  });
+}
+
 export default function PlayPage() {
   const me = useCachedSession();
   const [state, setState] = useState<RoundStatePayload | null>(null);
-  const [stake0, setStake0] = useState("100");
-  const [stake1, setStake1] = useState("50");
+  const [stake0, setStake0] = useState("10");
+  const [stake1, setStake1] = useState("10");
   const [walletKind, setWalletKind] = useState<WalletKind | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<"login" | "register" | null>(null);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
   const [now, setNow] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryRound[]>([]);
 
+  const closeAuth = useCallback(() => setAuthMode(null), []);
+  const openLogin = useCallback(() => setAuthMode("login"), []);
+  const openRegister = useCallback(() => setAuthMode("register"), []);
+
   const refresh = useCallback(async () => {
     const data = await api<RoundStatePayload>("/api/game/state");
-    setState((prev) => mergePlayState(prev, data));
+    applyPlayState(data, setState);
   }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("auth");
+    if (q === "login" || q === "register") {
+      window.history.replaceState({}, "", "/play");
+      if (!getCachedSession()) setAuthMode(q);
+    }
   }, []);
 
   useEffect(() => {
@@ -106,7 +140,7 @@ export default function PlayPage() {
             window.clearTimeout(fallback);
             fallback = undefined;
           }
-          setState((prev) => mergePlayState(prev, payload));
+          applyPlayState(payload, setState);
         }
         if (payload.type === "event") {
           void refresh();
@@ -122,7 +156,7 @@ export default function PlayPage() {
       if (fallback) window.clearTimeout(fallback);
       es?.close();
     };
-  }, [refresh]);
+  }, [refresh, me?.id]);
 
   const countdown = useMemo(() => {
     if (!state?.round || now == null) return null;
@@ -144,6 +178,10 @@ export default function PlayPage() {
 
   const place = useCallback(
     async (slotIndex: number) => {
+      if (!me) {
+        openLogin();
+        return;
+      }
       if (!state?.round) return;
       setBusy(true);
       setError(null);
@@ -165,7 +203,7 @@ export default function PlayPage() {
         setBusy(false);
       }
     },
-    [state?.round, stake0, stake1, resolvedKind, refresh],
+    [me, openLogin, state?.round, stake0, stake1, resolvedKind, refresh],
   );
 
   const cash = useCallback(
@@ -192,95 +230,91 @@ export default function PlayPage() {
   const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
 
   return (
-    <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-3 text-sm">
-          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(cashCredits)}</span>
-          <span className="text-brand-muted">cash</span>
-          <span className="text-brand-sand">·</span>
-          <span className="font-semibold tabular-nums text-brand-wine">{formatKes(promoCredits)}</span>
-          <span className="text-brand-muted">free</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="grid grid-cols-2 rounded-lg bg-brand-sand/30 p-0.5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setWalletKind("REAL")}
-              className={`min-h-10 rounded-md px-3 py-1.5 ${resolvedKind === "REAL" ? "bg-brand-wine text-brand-paper" : "text-brand-wine"}`}
-            >
-              Cash
-            </button>
-            <button
-              type="button"
-              onClick={() => setWalletKind("PROMO")}
-              className={`min-h-10 rounded-md px-3 py-1.5 ${resolvedKind === "PROMO" ? "bg-white text-brand-wine shadow-sm" : "text-brand-wine"}`}
-            >
-              Free
-            </button>
-          </div>
-          <a href="/wallet#deposit" className="btn-primary py-1.5 text-xs">
-            Deposit
-          </a>
+    <div className={`${montserrat.className} flex h-dvh max-w-[1200px] flex-col overflow-hidden bg-[#0d0d0f] text-[#f2f3f7]`}>
+      <PlayHeader
+        loggedIn={Boolean(me)}
+        role={me?.role}
+        cashCredits={cashCredits}
+        promoCredits={promoCredits}
+        walletKind={resolvedKind}
+        onWalletKind={(k) => setWalletKind(k)}
+        onLogin={openLogin}
+        onRegister={openRegister}
+      />
+      <div className="relative h-9 overflow-hidden border-b border-[#2a2c34] bg-gradient-to-r from-[#1a1206] via-[#241708] to-[#1a1206]">
+        <div className="flex h-full w-max items-center whitespace-nowrap text-[13px] font-bold text-[#ffd88a] [animation:playPromo_22s_linear_infinite] hover:[animation-play-state:paused]">
+          {[0, 1].map((copy) => (
+            <span key={copy} className="inline-flex items-center gap-2 px-10">
+              <span className="rounded bg-[#e11d2a] px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide text-white">
+                BONUS
+              </span>
+              Deposit via M-PESA and play · 18+ only · Gamble responsibly
+              {me ? (
+                <a href="/wallet#deposit" className="text-[#7fd4ff] no-underline">
+                  Deposit
+                </a>
+              ) : (
+                <button type="button" className="text-[#7fd4ff]" onClick={openRegister}>
+                  Join now
+                </button>
+              )}
+            </span>
+          ))}
         </div>
       </div>
-
-      {resolvedKind === "PROMO" ? (
-        <p className="mb-3 rounded-lg bg-brand-sand/25 px-3 py-2 text-xs text-brand-wineDark">
-          Free play uses a gentler crash curve. Winnings stay as free credits.
-        </p>
-      ) : null}
-
-      <div className="overflow-hidden rounded-2xl bg-[#11131c] shadow-[0_20px_60px_rgba(0,0,0,0.28)] ring-1 ring-black/20">
-        <HistoryStrip rounds={history} />
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_300px]">
+      <HistoryStrip rounds={history} />
+      <div className="flex min-h-0 flex-1 max-[820px]:flex-col max-[820px]:overflow-y-auto">
+        <div className="order-3 flex min-h-0 lg:order-1">
+          <LiveBets bets={state?.bets ?? []} meId={meId} crashed={crashed} />
+        </div>
+        <div className="order-1 flex min-w-0 flex-1 flex-col p-2.5 max-[820px]:flex-none max-[820px]:p-2 lg:order-2">
           <FlightStage
             status={state?.round?.status}
             displayBp={displayBp}
             countdown={countdown}
             connected={connected}
+            freePlay={resolvedKind === "PROMO"}
+            playerCount={state?.bets?.length}
           />
-          <LiveBets bets={state?.bets ?? []} meId={meId} crashed={crashed} />
-        </div>
-        <div className="grid gap-2 border-t border-white/5 bg-[#0e1018] p-2 sm:grid-cols-2">
-          <BetSlip
-            slotIndex={0}
-            stake={stake0}
-            setStake={setStake0}
-            mine={myBets.find((b) => b.slotIndex === 0)}
-            status={state?.round?.status}
-            roundId={state?.round?.id}
-            displayBp={displayBp}
-            busy={busy}
-            walletKind={resolvedKind}
-            available={resolvedKind === "REAL" ? Number(cashCredits ?? 0) : Number(promoCredits ?? 0)}
-            onBet={place}
-            onCash={cash}
-          />
-          <BetSlip
-            slotIndex={1}
-            stake={stake1}
-            setStake={setStake1}
-            mine={myBets.find((b) => b.slotIndex === 1)}
-            status={state?.round?.status}
-            roundId={state?.round?.id}
-            displayBp={displayBp}
-            busy={busy}
-            walletKind={resolvedKind}
-            available={resolvedKind === "REAL" ? Number(cashCredits ?? 0) : Number(promoCredits ?? 0)}
-            onBet={place}
-            onCash={cash}
-          />
+          <div className="mt-2.5 flex gap-2.5 max-[820px]:flex-col max-[820px]:gap-2">
+            <BetSlip
+              slotIndex={0}
+              stake={stake0}
+              setStake={setStake0}
+              mine={myBets.find((b) => b.slotIndex === 0)}
+              status={state?.round?.status}
+              displayBp={displayBp}
+              busy={busy}
+              walletKind={resolvedKind}
+              onBet={place}
+              onCash={cash}
+            />
+            <BetSlip
+              slotIndex={1}
+              stake={stake1}
+              setStake={setStake1}
+              mine={myBets.find((b) => b.slotIndex === 1)}
+              status={state?.round?.status}
+              displayBp={displayBp}
+              busy={busy}
+              walletKind={resolvedKind}
+              onBet={place}
+              onCash={cash}
+            />
+          </div>
+          {error ? <p className="mt-2 text-center text-xs font-bold text-[#ff6b76]">{error}</p> : null}
         </div>
       </div>
-
-      {error ? <p className="alert-error mt-3">{error}</p> : null}
-
-      <p className="mt-3 break-all text-[11px] text-brand-muted">
-        Round {state?.round?.roundNumber ?? "—"} · commitment {state?.round?.serverSeedHash.slice(0, 16) ?? "—"}… ·{" "}
-        <a className="link-quiet" href="/fairness">
-          Verify fairness
-        </a>
-      </p>
-    </>
+      {authMode ? (
+        <AuthModal
+          mode={authMode}
+          onMode={(next) => setAuthMode(next)}
+          onClose={closeAuth}
+          onAuthed={() => {
+            void refresh();
+          }}
+        />
+      ) : null}
+    </div>
   );
 }
