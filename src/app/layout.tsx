@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh font-sans">
-        <div className="border-b border-brand-sand/70 bg-brand-sand/35 px-3 py-2 text-center text-[11px] font-medium leading-snug text-brand-wine sm:px-4 sm:text-xs" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
+        <div className="site-banner border-b border-brand-sand/70 bg-brand-sand/35 px-3 py-2 text-center text-[11px] font-medium leading-snug text-brand-wine sm:px-4 sm:text-xs" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
           {SITE_BANNER}
         </div>
         {children}

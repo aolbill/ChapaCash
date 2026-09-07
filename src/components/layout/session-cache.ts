@@ -80,12 +80,20 @@ export function patchCachedBalances(partial: {
 }) {
   if (!cachedMe) return;
   if (partial.cashCredits == null && partial.promoCredits == null && partial.hasDeposited == null) return;
-  cachedMe = {
+  const next = {
     ...cachedMe,
     cashCredits: partial.cashCredits ?? cachedMe.cashCredits,
     promoCredits: partial.promoCredits ?? cachedMe.promoCredits,
     hasDeposited: partial.hasDeposited ?? cachedMe.hasDeposited,
   };
+  if (
+    next.cashCredits === cachedMe.cashCredits &&
+    next.promoCredits === cachedMe.promoCredits &&
+    next.hasDeposited === cachedMe.hasDeposited
+  ) {
+    return;
+  }
+  cachedMe = next;
   writeStored(cachedMe);
   emit();
 }

@@ -20,6 +20,12 @@ export function formatKes(value: string | number | null | undefined): string {
   return `KES ${Math.trunc(n).toLocaleString("en-KE")}`;
 }
 
+export function formatPlayKes(value: string | number | null | undefined): string {
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return "0.00 KES";
+  return `${n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KES`;
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,

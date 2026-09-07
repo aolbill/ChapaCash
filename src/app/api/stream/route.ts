@@ -1,4 +1,3 @@
-import { ApiError } from "@/domain/errors";
 import { handleApi, requestIdFrom } from "@/lib/http";
 import { assertActiveUser, authUserById, sessionUserIdFromRequest } from "@/server/auth/service";
 import { publicRoundState, reconnectSnapshot } from "@/server/game/service";
@@ -13,7 +12,6 @@ export async function GET(req: Request) {
   return handleApi(requestId, async () => {
     startEngine();
     const userId = await sessionUserIdFromRequest(req);
-    if (!userId) throw new ApiError("unauthorized", 401, "Authentication required.");
     const url = new URL(req.url);
     const after = Number(url.searchParams.get("afterSeq") ?? "0");
 
@@ -32,13 +30,14 @@ export async function GET(req: Request) {
             open = false;
           }
         };
-        const [found, snap, balances] = await Promise.all([
-          authUserById(userId),
-          reconnectSnapshot(after),
-          userBalances(userId),
-        ]);
-        assertActiveUser(found);
-        send({ type: "snapshot", ...balances, ...snap });
+        const snap = await reconnectSnapshot(after);
+        if (userId) {
+          const [found, balances] = await Promise.all([authUserById(userId), userBalances(userId)]);
+          assertActiveUser(found);
+          send({ type: "snapshot", ...balances, ...snap });
+        } else {
+          send({ type: "snapshot", cashCredits: "0", promoCredits: "0", hasDeposited: false, ...snap });
+        }
         unsubscribe = subscribeEvents((event) => {
           send({ type: "event", event });
         });

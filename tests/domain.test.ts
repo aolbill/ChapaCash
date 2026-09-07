@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveCrashMultiplierBp, derivePromoCrashMultiplierBp, commitServerSeed, ALGORITHM_V1 } from "@/domain/fairness";
+import { deriveCrashMultiplierBp, derivePromoCrashMultiplierBp, commitServerSeed, previewCrashSeries, ALGORITHM_V1 } from "@/domain/fairness";
 import { decideCashout, multiplierBpAt } from "@/domain/round";
 import { payoutCredits } from "@/domain/money";
 import { assertBalanced, promoPostings, cashoutPostings, lossPostings, withdrawalPostings } from "@/domain/ledger";
@@ -24,6 +24,18 @@ describe("fairness", () => {
     expect(deriveCrashMultiplierBp({ ...base, nonce: "2" }).crashMultiplierBp).not.toBe(a);
     expect(deriveCrashMultiplierBp({ ...base, clientSeed: "other" }).crashMultiplierBp).not.toBe(a);
     expect(deriveCrashMultiplierBp({ ...base, serverSeed: "b".repeat(64) }).crashMultiplierBp).not.toBe(a);
+  });
+
+  it("previews a deterministic nonce series from one seed", () => {
+    const preview = previewCrashSeries({ ...base, fromNonce: 1, count: 5 });
+    expect(preview).toHaveLength(5);
+    expect(preview[0]?.nonce).toBe("1");
+    expect(preview[4]?.nonce).toBe("5");
+    expect(preview[0]?.crashMultiplierBp).toBe(deriveCrashMultiplierBp({ ...base, nonce: "1" }).crashMultiplierBp);
+    expect(preview[1]?.crashMultiplierBp).toBe(deriveCrashMultiplierBp({ ...base, nonce: "2" }).crashMultiplierBp);
+    expect(preview.map((p) => p.crashMultiplierBp)).not.toEqual(
+      previewCrashSeries({ ...base, serverSeed: "b".repeat(64), fromNonce: 1, count: 5 }).map((p) => p.crashMultiplierBp),
+    );
   });
 
   it("gives free-credit mapping a later typical crash than cash play", () => {

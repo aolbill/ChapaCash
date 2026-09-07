@@ -62,6 +62,7 @@ const GameRoundSchema = new Schema(
     archivedAt: { type: Date, default: null },
     lastSequence: { type: Number, default: 0 },
     liveKey: { type: String, default: null },
+    seriesId: { type: String, default: null, index: true },
   },
   { timestamps: true },
 );
@@ -156,9 +157,26 @@ const FairnessProofSchema = new Schema(
     nonce: { type: String, required: true },
     crashMultiplierBp: { type: Number, required: true },
     hmacPreview: { type: String, required: true },
+    seedRevealed: { type: Boolean, default: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
+
+const CrashSeriesSchema = new Schema(
+  {
+    status: { type: String, enum: ["ACTIVE", "REVEALED"], required: true },
+    serverSeed: { type: String, required: true },
+    serverSeedHash: { type: String, required: true },
+    clientSeed: { type: String, required: true },
+    algorithmVersion: { type: String, required: true },
+    startRoundNumber: { type: Number, required: true },
+    rotateRequested: { type: Boolean, default: false },
+    pendingServerSeed: { type: String, default: null },
+    revealedAt: { type: Date, default: null },
+  },
+  { timestamps: true },
+);
+CrashSeriesSchema.index({ status: 1 }, { unique: true, partialFilterExpression: { status: "ACTIVE" } });
 
 const AuditLogSchema = new Schema(
   {
@@ -252,6 +270,15 @@ function modelWithEnum<T>(name: string, schema: Schema, path: string, values: st
   return mongoose.model<T>(name, schema);
 }
 
+function modelWithPath<T>(name: string, schema: Schema, path: string): Model<T> {
+  const existing = mongoose.models[name] as Model<T> | undefined;
+  if (existing) {
+    if (existing.schema.path(path)) return existing;
+    mongoose.deleteModel(name);
+  }
+  return mongoose.model<T>(name, schema);
+}
+
 export type UserDoc = InferSchemaType<typeof UserSchema> & { _id: mongoose.Types.ObjectId };
 export type SessionDoc = InferSchemaType<typeof SessionSchema> & { _id: mongoose.Types.ObjectId };
 export type GameRoundDoc = InferSchemaType<typeof GameRoundSchema> & { _id: mongoose.Types.ObjectId };
@@ -262,7 +289,7 @@ export type LedgerEntryDoc = InferSchemaType<typeof LedgerEntrySchema> & { _id: 
 
 export const User = model<UserDoc>("User", UserSchema);
 export const Session = model<SessionDoc>("Session", SessionSchema);
-export const GameRound = model<GameRoundDoc>("GameRound", GameRoundSchema);
+export const GameRound = modelWithPath<GameRoundDoc>("GameRound", GameRoundSchema, "seriesId");
 export const RoundEvent = model<{
   roundId: string;
   sequence: number;
@@ -279,7 +306,7 @@ export const WalletAccount = modelWithEnum<WalletAccountDoc>(
   ["USER_WALLET", "USER_PROMO", "HOUSE", "PROMO_POOL", "WAGER_CLEARING", "PAYSTACK_CLEARING"],
 );
 export const LedgerEntry = model<LedgerEntryDoc>("LedgerEntry", LedgerEntrySchema);
-export const FairnessProof = model<{
+export const FairnessProof = modelWithPath<{
   roundId: string;
   algorithmVersion: string;
   serverSeedHash: string;
@@ -288,7 +315,14 @@ export const FairnessProof = model<{
   nonce: string;
   crashMultiplierBp: number;
   hmacPreview: string;
-}>("FairnessProof", FairnessProofSchema);
+  seedRevealed: boolean;
+}>("FairnessProof", FairnessProofSchema, "seedRevealed");
+export type CrashSeriesDoc = InferSchemaType<typeof CrashSeriesSchema> & {
+  _id: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+};
+export const CrashSeries = model<CrashSeriesDoc>("CrashSeries", CrashSeriesSchema);
 export const AuditLog = model<{
   actorUserId: string | null;
   subjectUserId: string | null;

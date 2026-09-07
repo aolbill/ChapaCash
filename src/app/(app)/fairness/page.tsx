@@ -15,7 +15,8 @@ export default function FairnessPage() {
   const [proofs, setProofs] = useState<
     {
       roundId: string;
-      serverSeed: string;
+      serverSeed: string | null;
+      seedRevealed?: boolean;
       clientSeed: string;
       nonce: string;
       algorithmVersion: string;
@@ -34,11 +35,11 @@ export default function FairnessPage() {
   useEffect(() => {
     void api<{ proofs: typeof proofs }>("/api/fairness/verify").then((d) => {
       setProofs(d.proofs);
-      const first = d.proofs[0];
+      const first = d.proofs.find((p) => p.serverSeed) ?? d.proofs[0];
       if (first) {
         setForm({
           algorithmVersion: first.algorithmVersion,
-          serverSeed: first.serverSeed,
+          serverSeed: first.serverSeed ?? "",
           clientSeed: first.clientSeed,
           nonce: first.nonce,
         });
@@ -60,7 +61,7 @@ export default function FairnessPage() {
         <PageHeader
           kicker="Provably fair"
           title="Fairness verification"
-          description="After a round is archived, the server seed is revealed. This page re-derives the crash point with HMAC-SHA256. A matching number means the published inputs reproduce the result — it is not a licensing or regulatory claim."
+          description="Each series uses one server seed and nonce = round number. The hash is public immediately. The seed is published when the operator rotates the series, so you can then re-derive every crash in that batch."
         />
         <form onSubmit={onVerify} className="card space-y-4 p-5">
           {(["algorithmVersion", "serverSeed", "clientSeed", "nonce"] as const).map((k) => (
@@ -84,6 +85,7 @@ export default function FairnessPage() {
                 <span>Round {p.roundId.slice(-6)}</span>
                 <span className="tabular-nums text-brand-muted">
                   {formatBp(p.crashMultiplierBp)} · nonce {p.nonce}
+                  {p.seedRevealed === false ? " · seed pending rotate" : ""}
                 </span>
               </li>
             ))}

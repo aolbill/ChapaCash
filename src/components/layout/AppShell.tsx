@@ -14,7 +14,8 @@ import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 export function AppShell({ children, dense = false }: { children: ReactNode; dense?: boolean }) {
   const router = useRouter();
   const path = usePathname();
-  const isDense = dense || path === "/play";
+  const isPlay = path === "/play";
+  const isDense = dense || isPlay;
   const me = useCachedSession();
   const [bootError, setBootError] = useState<string | null>(null);
 
@@ -36,10 +37,10 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
           if (cancelled) return;
           if (err instanceof ApiHttpError && err.status === 401) {
             setCachedSession(null);
-            router.replace("/login");
+            if (!isPlay) router.replace("/login");
             return;
           }
-          if (!getCachedSession()) {
+          if (!getCachedSession() && !isPlay) {
             setBootError(err instanceof Error ? err.message : "Could not load your session.");
           }
         });
@@ -50,9 +51,9 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
       cancelled = true;
       window.clearInterval(poll);
     };
-  }, [router]);
+  }, [router, isPlay]);
 
-  if (!me) {
+  if (!me && !isPlay) {
     return (
       <div className="grid min-h-[70vh] place-items-center px-4">
         <div className="text-center">
@@ -73,17 +74,21 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
 
   return (
     <>
-      <Nav
-        role={me.role}
-        displayName={me.displayName}
-        cashCredits={me.cashCredits}
-        promoCredits={me.promoCredits}
-      />
+      {path === "/play" || !me ? null : (
+        <Nav
+          role={me.role}
+          displayName={me.displayName}
+          cashCredits={me.cashCredits}
+          promoCredits={me.promoCredits}
+        />
+      )}
       <div
         className={
-          isDense
-            ? "mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-4 lg:pb-4"
-            : "mx-auto max-w-6xl px-3 pb-28 pt-4 sm:px-4 sm:py-8 lg:pb-8"
+          path === "/play"
+            ? "play-root h-dvh overflow-hidden"
+            : isDense
+              ? "mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-4 lg:pb-4"
+              : "mx-auto max-w-6xl px-3 pb-28 pt-4 sm:px-4 sm:py-8 lg:pb-8"
         }
       >
         {children}

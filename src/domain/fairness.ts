@@ -97,3 +97,45 @@ export function formatMultiplier(bp: number): string {
   const frac = (bp % 100).toString().padStart(2, "0");
   return `${whole}.${frac}x`;
 }
+
+export type SeriesPreviewPoint = {
+  nonce: string;
+  crashMultiplierBp: number;
+  promoCrashMultiplierBp: number;
+};
+
+/**
+ * Upcoming crashes for a committed series: HMAC(serverSeed, clientSeed:nonce)
+ * with incrementing nonce. Anyone with the seed can reproduce this list.
+ */
+export function previewCrashSeries(args: {
+  algorithmVersion: string;
+  serverSeed: string;
+  clientSeed: string;
+  fromNonce: number;
+  count: number;
+}): SeriesPreviewPoint[] {
+  const count = Math.max(0, Math.min(100, Math.floor(args.count)));
+  const from = Math.max(1, Math.floor(args.fromNonce));
+  const out: SeriesPreviewPoint[] = [];
+  for (let i = 0; i < count; i++) {
+    const nonce = String(from + i);
+    const cash = deriveCrashMultiplierBp({
+      algorithmVersion: args.algorithmVersion,
+      serverSeed: args.serverSeed,
+      clientSeed: args.clientSeed,
+      nonce,
+    });
+    const promo = derivePromoCrashMultiplierBp({
+      serverSeed: args.serverSeed,
+      clientSeed: args.clientSeed,
+      nonce,
+    });
+    out.push({
+      nonce,
+      crashMultiplierBp: cash.crashMultiplierBp,
+      promoCrashMultiplierBp: promo.crashMultiplierBp,
+    });
+  }
+  return out;
+}
