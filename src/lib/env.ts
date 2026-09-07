@@ -14,7 +14,7 @@ const schema = z.object({
   FAIRNESS_ALGORITHM_VERSION: z.string().default("hmac-sha256-crash-v1"),
   PROMO_CREDIT_AMOUNT: z.string().default("10000"),
   ENGINE_TICK_MS: z.string().default("100"),
-  BETTING_WINDOW_MS: z.string().default("8000"),
+  BETTING_WINDOW_MS: z.string().default("15000"),
   INTERMISSION_MS: z.string().default("4000"),
   GROWTH_PER_SECOND: z.string().default("0.06"),
   RATE_LIMIT_LOGIN_PER_MIN: z.string().default("10"),

@@ -97,8 +97,8 @@ export async function createScheduledRound(): Promise<void> {
   const roundNumber = (last?.roundNumber ?? 0) + 1;
   const series = await ensureActiveSeries();
   const now = Date.now();
-  const bettingOpensAt = new Date(now + 400);
-  const bettingClosesAt = new Date(now + 400 + Number(env.BETTING_WINDOW_MS));
+  const bettingOpensAt = new Date(now);
+  const bettingClosesAt = new Date(now + Number(env.BETTING_WINDOW_MS));
   try {
     const round = await GameRound.create({
       roundNumber,
@@ -551,10 +551,12 @@ let publicStateCache: { at: number; value: Awaited<ReturnType<typeof loadPublicR
 
 export async function publicRoundState() {
   const now = Date.now();
-  if (publicStateCache && now - publicStateCache.at < 400) return publicStateCache.value;
+  if (publicStateCache && now - publicStateCache.at < 400) {
+    return { ...publicStateCache.value, serverNow: new Date(now).toISOString() };
+  }
   const value = await loadPublicRoundState();
   publicStateCache = { at: now, value };
-  return value;
+  return { ...value, serverNow: new Date(now).toISOString() };
 }
 
 async function loadPublicRoundState() {
@@ -563,7 +565,7 @@ async function loadPublicRoundState() {
     .sort({ roundNumber: 1 })
     .lean();
   if (!round) {
-    return { round: null, bets: [], multiplierBp: null as number | null };
+    return { serverNow: new Date().toISOString(), round: null, bets: [], multiplierBp: null as number | null };
   }
   const bets = await Bet.find({ roundId: String(round._id) }).sort({ createdAt: 1 }).lean();
   const betIds = bets.map((b) => String(b._id));
@@ -593,6 +595,7 @@ async function loadPublicRoundState() {
     round.status === "CRASHED" || round.status === "SETTLED" || round.status === "ARCHIVED";
 
   return {
+    serverNow: new Date().toISOString(),
     round: {
       id: String(round._id),
       roundNumber: round.roundNumber,

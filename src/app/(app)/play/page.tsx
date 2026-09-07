@@ -10,7 +10,7 @@ import { PlayHeader } from "@/components/play/PlayHeader";
 import type { HistoryRound, RoundStatePayload, WalletKind } from "@/components/play/types";
 import { api } from "@/components/ui/api";
 import { Montserrat } from "next/font/google";
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -35,17 +35,20 @@ function mergePlayState(
     typeof payload.hasDeposited === "boolean"
       ? payload.hasDeposited
       : (prev?.hasDeposited ?? cached?.hasDeposited ?? false);
-  const bets = payload.bets ?? prev?.bets ?? [];
+  const round = payload.round !== undefined ? payload.round : (prev?.round ?? null);
+  const roundChanged = round?.id !== prev?.round?.id;
+  const bets = payload.bets ?? (roundChanged ? [] : prev?.bets) ?? [];
   const meId = cached?.id;
   return {
     cashCredits,
     promoCredits,
     hasDeposited,
     lifetimeDepositedKes: payload.lifetimeDepositedKes ?? prev?.lifetimeDepositedKes,
+    serverNow: payload.serverNow ?? prev?.serverNow,
     multiplierBp: payload.multiplierBp ?? prev?.multiplierBp ?? null,
     bets,
-    myBets: meId ? bets.filter((b) => b.userId === meId) : (payload.myBets ?? prev?.myBets ?? []),
-    round: payload.round ?? prev?.round ?? null,
+    myBets: meId ? bets.filter((b) => b.userId === meId) : (payload.myBets ?? (roundChanged ? [] : prev?.myBets) ?? []),
+    round,
   };
 }
 
@@ -81,10 +84,22 @@ export default function PlayPage() {
   const openLogin = useCallback(() => setAuthMode("login"), []);
   const openRegister = useCallback(() => setAuthMode("register"), []);
 
-  const refresh = useCallback(async () => {
-    const data = await api<RoundStatePayload>("/api/game/state");
-    applyPlayState(data, setState);
+  const refreshGen = useRef(0);
+  const serverOffsetRef = useRef(0);
+
+  const applyServerNow = useCallback((iso: string | undefined) => {
+    if (!iso) return;
+    const t = Date.parse(iso);
+    if (Number.isFinite(t)) serverOffsetRef.current = Date.now() - t;
   }, []);
+
+  const refresh = useCallback(async () => {
+    const gen = ++refreshGen.current;
+    const data = await api<RoundStatePayload>("/api/game/state");
+    if (gen !== refreshGen.current) return;
+    applyServerNow(data.serverNow);
+    applyPlayState(data, setState);
+  }, [applyServerNow]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -134,15 +149,25 @@ export default function PlayPage() {
           cashCredits?: string;
           promoCredits?: string;
           hasDeposited?: boolean;
+          event?: { type?: string; payload?: { multiplierBp?: number } };
         } & Partial<RoundStatePayload>;
         if (payload.type === "snapshot" || payload.type === "state") {
           if (fallback) {
             window.clearTimeout(fallback);
             fallback = undefined;
           }
+          applyServerNow(payload.serverNow);
           applyPlayState(payload, setState);
         }
         if (payload.type === "event") {
+          const evType = payload.event?.type;
+          if (evType === "TICK") {
+            const bp = payload.event?.payload?.multiplierBp;
+            if (typeof bp === "number") {
+              setState((prev) => (prev ? { ...prev, multiplierBp: bp } : prev));
+            }
+            return;
+          }
           void refresh();
         }
       } catch {
@@ -156,12 +181,12 @@ export default function PlayPage() {
       if (fallback) window.clearTimeout(fallback);
       es?.close();
     };
-  }, [refresh, me?.id]);
+  }, [refresh, me?.id, applyServerNow]);
 
   const countdown = useMemo(() => {
     if (!state?.round || now == null) return null;
-    if (state.round.status !== "BETTING_OPEN") return null;
-    const ms = new Date(state.round.bettingClosesAt).getTime() - (now ?? 0);
+    if (state.round.status !== "BETTING_OPEN" && state.round.status !== "SCHEDULED") return null;
+    const ms = new Date(state.round.bettingClosesAt).getTime() - (now - serverOffsetRef.current);
     return Math.max(0, Math.ceil(ms / 1000));
   }, [state, now]);
 
@@ -272,6 +297,8 @@ export default function PlayPage() {
             status={state?.round?.status}
             displayBp={displayBp}
             countdown={countdown}
+            bettingOpensAt={state?.round?.bettingOpensAt}
+            bettingClosesAt={state?.round?.bettingClosesAt}
             connected={connected}
             freePlay={resolvedKind === "PROMO"}
             playerCount={state?.bets?.length}
