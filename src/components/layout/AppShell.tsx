@@ -57,8 +57,8 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
     return (
       <div className="grid min-h-[70vh] place-items-center px-4">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-pulse rounded-xl bg-brand-wine" />
-          <p className="mt-4 text-sm font-semibold text-brand-wine">ChapaCash</p>
+          <div className="mx-auto h-10 w-10 animate-pulse rounded-xl bg-[radial-gradient(circle_at_35%_30%,#ff5b66,#e11d2a)]" />
+          <p className="mt-4 text-sm font-semibold text-brand-ink">ChapaCash</p>
           <p className="mt-1 text-sm text-brand-muted">
             {bootError ? bootError : "Loading your dashboard…"}
           </p>

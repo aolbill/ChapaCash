@@ -8,14 +8,13 @@ import { SITE_NAME } from "@/domain/copy";
 export function BrandMark({ href = "/", compact = false }: { href?: string; compact?: boolean }) {
   return (
     <Link href={href} className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-wine text-[11px] font-bold tracking-tight text-brand-paper shadow-sm">
-        CC
-      </span>
+      <span className="h-[30px] w-[30px] shrink-0 rounded-lg bg-[radial-gradient(circle_at_35%_30%,#ff5b66,#e11d2a)] shadow-[0_0_16px_rgba(225,29,42,.5)]" />
       {compact ? (
         <span className="sr-only">{SITE_NAME}</span>
       ) : (
-        <span className="hidden truncate text-base font-semibold tracking-tight text-brand-wine min-[380px]:inline sm:text-lg">
-          {SITE_NAME}
+        <span className="hidden truncate text-[17px] font-extrabold tracking-wide text-brand-ink min-[380px]:inline">
+          CHAPA
+          <span className="ml-1 inline-block rounded-md bg-brand-wine px-1.5 py-0.5 text-white">CASH</span>
         </span>
       )}
     </Link>
@@ -47,7 +46,7 @@ export function PageHeader({
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-xl border border-dashed border-brand-sand bg-white/70 px-4 py-8 text-center text-sm text-brand-muted">
+    <p className="rounded-xl border border-dashed border-brand-sand bg-brand-surface/70 px-4 py-8 text-center text-sm text-brand-muted">
       {children}
     </p>
   );
@@ -62,14 +61,14 @@ export function StatusBadge({
 }) {
   const cls =
     tone === "live"
-      ? "bg-brand-wine text-brand-paper"
+      ? "bg-brand-wine text-white"
       : tone === "ok"
-        ? "bg-brand-success/10 text-brand-success"
+        ? "bg-brand-success/15 text-brand-success"
         : tone === "warn"
           ? "bg-brand-warning/15 text-brand-warning"
           : tone === "danger"
-            ? "bg-brand-danger/10 text-brand-danger"
-            : "bg-brand-sand/40 text-brand-wine";
+            ? "bg-brand-danger/15 text-brand-danger"
+            : "bg-brand-surface text-brand-ink";
   return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${cls}`}>{children}</span>;
 }
 
@@ -82,7 +81,7 @@ export function AdminNav() {
     { href: "/admin/audit", label: "Audit", exact: false },
   ];
   return (
-    <nav className="flex w-full flex-wrap gap-1 rounded-xl bg-brand-sand/30 p-1 sm:w-auto">
+    <nav className="flex w-full flex-wrap gap-1 rounded-xl bg-brand-surface p-1 sm:w-auto">
       {items.map((item) => {
         const active = item.exact ? path === item.href : Boolean(path?.startsWith(item.href));
         return (
@@ -90,7 +89,7 @@ export function AdminNav() {
             key={item.href}
             href={item.href}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              active ? "bg-brand-wine text-brand-paper" : "text-brand-wine hover:bg-white"
+              active ? "bg-brand-wine text-white" : "text-brand-ink hover:bg-brand-cream"
             }`}
           >
             {item.label}

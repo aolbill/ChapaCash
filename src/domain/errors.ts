@@ -10,6 +10,8 @@ export type ApiErrorCode =
   | "account_suspended"
   | "idempotent_replay"
   | "crash_already_occurred"
+  | "misconfigured"
+  | "upstream"
   | "internal";
 
 export class ApiError extends Error {

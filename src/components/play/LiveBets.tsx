@@ -18,7 +18,7 @@ export function LiveBets({
   const total = bets.reduce((sum, b) => sum + Number(b.stakeCredits || 0), 0);
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col border-[#2a2c34] bg-[#16171b] max-[820px]:max-h-none max-[820px]:border-t lg:w-[300px] lg:shrink-0 lg:border-r">
+    <aside className="flex h-full min-h-0 w-full flex-col border-[#2a2c34] bg-[#16171b] max-lg:border-t lg:w-[280px] lg:shrink-0 lg:border-r xl:w-[300px]">
       <div className="flex gap-1 p-2">
         {(
           [
@@ -51,7 +51,7 @@ export function LiveBets({
         <span className="w-11 text-right">X</span>
         <span className="w-16 text-right">Win</span>
       </div>
-      <ul className="min-h-0 flex-1 overflow-auto max-[820px]:max-h-[280px]">
+      <ul className="min-h-0 flex-1 overflow-auto max-lg:max-h-[220px] sm:max-lg:max-h-[280px]">
         {rows.map((b) => {
           const won = b.cashedOutAtBp != null;
           const lost = crashed && !won && b.status !== "CASHED_OUT";

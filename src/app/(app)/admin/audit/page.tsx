@@ -36,8 +36,8 @@ export default function AuditPage() {
         <ul className="space-y-2">
           {logs.map((l) => (
             <li key={l.id} className="list-row flex-col items-start">
-              <span className="font-medium text-brand-wine">{l.action}</span>
-              <span className="text-brand-wineDark">{l.reason}</span>
+              <span className="font-medium text-brand-ink">{l.action}</span>
+              <span className="text-brand-ink">{l.reason}</span>
               <span className="text-xs text-brand-muted">
                 {l.entityType}:{l.entityId}
               </span>

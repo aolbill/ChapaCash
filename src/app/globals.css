@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html {
@@ -17,7 +17,7 @@ body {
 }
 
 body {
-  @apply bg-brand-paper font-sans text-brand-wineDark antialiased;
+  @apply bg-brand-paper font-sans text-brand-ink antialiased;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -34,54 +34,54 @@ body {
 }
 
 :focus-visible {
-  @apply outline outline-2 outline-offset-2 outline-brand-wine;
+  @apply outline outline-2 outline-offset-2 outline-brand-success;
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-brand-sand/50 bg-brand-cream shadow-card;
+    @apply rounded-2xl border border-brand-sand bg-brand-cream shadow-card;
   }
   .btn-primary {
-    @apply inline-flex min-h-11 touch-manipulation items-center justify-center rounded-xl bg-brand-wine px-4 py-2.5 text-sm font-semibold text-brand-paper transition hover:bg-brand-wineDark disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex min-h-11 touch-manipulation items-center justify-center rounded-xl bg-gradient-to-b from-brand-success to-brand-successDark px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-ghost {
-    @apply inline-flex min-h-11 touch-manipulation items-center justify-center rounded-xl border border-brand-sand bg-brand-cream px-4 py-2.5 text-sm font-medium text-brand-wine transition hover:bg-brand-sand/25 disabled:opacity-40;
+    @apply inline-flex min-h-11 touch-manipulation items-center justify-center rounded-xl border border-brand-sand bg-brand-cream px-4 py-2.5 text-sm font-medium text-brand-ink transition hover:bg-brand-surface disabled:opacity-40;
   }
   .btn-danger {
-    @apply inline-flex min-h-11 touch-manipulation items-center justify-center rounded-xl border border-brand-danger/40 bg-white px-4 py-2.5 text-sm font-semibold text-brand-danger transition hover:bg-brand-danger/5 disabled:opacity-40;
+    @apply inline-flex min-h-11 touch-manipulation items-center justify-center rounded-xl border border-brand-danger/40 bg-brand-cream px-4 py-2.5 text-sm font-semibold text-brand-danger transition hover:bg-brand-danger/10 disabled:opacity-40;
   }
   .field {
-    @apply mt-1.5 w-full min-h-11 rounded-xl border border-brand-sand/80 bg-white px-3 py-2.5 text-base text-brand-wineDark placeholder:text-brand-muted/70 shadow-sm transition focus:border-brand-wine focus:outline-none focus:ring-2 focus:ring-brand-wine/15 sm:text-sm;
+    @apply mt-1.5 w-full min-h-11 rounded-xl border border-brand-sand bg-brand-paper px-3 py-2.5 text-base text-brand-ink placeholder:text-brand-muted/70 shadow-sm transition focus:border-brand-success focus:outline-none focus:ring-2 focus:ring-brand-success/20 sm:text-sm;
   }
   .label {
-    @apply block text-sm font-medium text-brand-wine;
+    @apply block text-sm font-medium text-brand-muted;
   }
   .kicker {
     @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-muted;
   }
   .page-title {
-    @apply mt-1 text-[1.65rem] font-semibold tracking-tight text-brand-wine sm:text-3xl;
+    @apply mt-1 text-[1.65rem] font-semibold tracking-tight text-brand-ink sm:text-3xl;
   }
   .page-lead {
     @apply mt-2 max-w-2xl text-sm leading-relaxed text-brand-muted;
   }
   .alert-error {
-    @apply rounded-xl border border-brand-danger/20 bg-brand-danger/5 px-3 py-2 text-sm text-brand-danger;
+    @apply rounded-xl border border-brand-danger/25 bg-brand-danger/10 px-3 py-2 text-sm text-brand-danger;
   }
   .alert-ok {
-    @apply rounded-xl border border-brand-success/20 bg-brand-success/5 px-3 py-2 text-sm text-brand-success;
+    @apply rounded-xl border border-brand-success/25 bg-brand-success/10 px-3 py-2 text-sm text-brand-success;
   }
   .alert-wait {
-    @apply rounded-xl border border-brand-warning/25 bg-brand-warning/10 px-3 py-2 text-sm text-brand-warning;
+    @apply rounded-xl border border-brand-warning/30 bg-brand-warning/10 px-3 py-2 text-sm text-brand-warning;
   }
   .chip {
-    @apply inline-flex items-center rounded-full bg-brand-sand/40 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-wine;
+    @apply inline-flex items-center rounded-full bg-brand-surface px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-ink;
   }
   .list-row {
-    @apply flex min-w-0 flex-col gap-1 rounded-xl border border-brand-sand/40 bg-white px-3 py-3 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:px-4;
+    @apply flex min-w-0 flex-col gap-1 rounded-xl border border-brand-sand bg-brand-surface px-3 py-3 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:px-4;
   }
   .link-quiet {
-    @apply font-medium text-brand-wine underline decoration-brand-sand underline-offset-4 hover:decoration-brand-wine;
+    @apply font-medium text-brand-success underline decoration-brand-sand underline-offset-4 hover:decoration-brand-success;
   }
 }
 
@@ -103,8 +103,6 @@ body {
 }
 
 body:has(.play-root) {
-  background: #0d0d0f;
-  color: #f2f3f7;
   overflow: hidden;
 }
 body:has(.play-root) .site-banner {

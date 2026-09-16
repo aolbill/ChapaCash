@@ -252,6 +252,17 @@ const EngineLockSchema = new Schema({
   expiresAt: { type: Date, required: true },
 });
 
+const PasswordResetTokenSchema = new Schema(
+  {
+    userId: { type: String, required: true, index: true },
+    tokenHash: { type: String, required: true, unique: true },
+    expiresAt: { type: Date, required: true, index: true },
+    usedAt: { type: Date, default: null },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+PasswordResetTokenSchema.index({ userId: 1, createdAt: -1 });
+
 function model<T>(name: string, schema: Schema): Model<T> {
   const existing = mongoose.models[name] as Model<T> | undefined;
   if (existing) return existing;
@@ -350,3 +361,7 @@ export type DepositDoc = InferSchemaType<typeof DepositSchema> & { _id: mongoose
 export const Deposit = model<DepositDoc>("Deposit", DepositSchema);
 export type WithdrawalDoc = InferSchemaType<typeof WithdrawalSchema> & { _id: mongoose.Types.ObjectId };
 export const Withdrawal = model<WithdrawalDoc>("Withdrawal", WithdrawalSchema);
+export type PasswordResetTokenDoc = InferSchemaType<typeof PasswordResetTokenSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+export const PasswordResetToken = model<PasswordResetTokenDoc>("PasswordResetToken", PasswordResetTokenSchema);
