@@ -33,7 +33,7 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-4 border-b border-brand-sand pb-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
       <div className="min-w-0">
         {kicker ? <p className="kicker">{kicker}</p> : null}
         <h1 className="page-title">{title}</h1>

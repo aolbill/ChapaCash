@@ -66,9 +66,9 @@ export function DepositPanel({ onCredited }: { onCredited?: (cashCredits: string
   }
 
   return (
-    <form onSubmit={onDeposit} className="card scroll-mt-28 space-y-4 p-4 sm:p-5" id="deposit">
+    <form onSubmit={onDeposit} className="card-success scroll-mt-28 space-y-4 p-4 pl-6 sm:p-5 sm:pl-6" id="deposit">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Deposit with M-PESA</h2>
+        <h2 className="section-title text-base">Deposit with M-PESA</h2>
         <p className="mt-1 text-sm leading-relaxed text-brand-muted">
           STK push to your Safaricom number. Credited cash is what you stake on real bets.
         </p>

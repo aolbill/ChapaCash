@@ -57,41 +57,51 @@ export default function FairnessPage() {
   }
 
   return (
-      <div className="mx-auto max-w-3xl space-y-8">
-        <PageHeader
-          kicker="Provably fair"
-          title="Fairness verification"
-          description="Each series uses one server seed and nonce = round number. The hash is public immediately. The seed is published when the operator rotates the series, so you can then re-derive every crash in that batch."
-        />
-        <form onSubmit={onVerify} className="card space-y-4 p-5">
-          {(["algorithmVersion", "serverSeed", "clientSeed", "nonce"] as const).map((k) => (
-            <label key={k} className="label">
-              {FIELD_LABELS[k]}
-              <input
-                className="field font-mono text-sm break-all"
-                value={form[k]}
-                onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-              />
-            </label>
-          ))}
-          <button className="btn-primary w-full sm:w-auto">Verify locally via API</button>
-        </form>
-        {result ? <p className="alert-ok">{result}</p> : null}
-        <section>
-          <h2 className="text-sm font-semibold text-brand-ink">Archived proofs</h2>
-          <ul className="mt-3 space-y-2">
-            {proofs.map((p) => (
-              <li key={p.roundId} className="list-row">
-                <span>Round {p.roundId.slice(-6)}</span>
-                <span className="tabular-nums text-brand-muted">
-                  {formatBp(p.crashMultiplierBp)} · nonce {p.nonce}
+    <div className="mx-auto max-w-3xl space-y-8">
+      <PageHeader
+        kicker="Provably fair"
+        title="Fairness verification"
+        description="Each series uses one server seed and nonce = round number. The hash is public immediately. The seed is published when the operator rotates the series, so you can then re-derive every crash in that batch."
+      />
+
+      <form onSubmit={onVerify} className="card-accent space-y-4 p-5 pl-6">
+        {(["algorithmVersion", "serverSeed", "clientSeed", "nonce"] as const).map((k) => (
+          <label key={k} className="label">
+            {FIELD_LABELS[k]}
+            <input
+              className="field font-mono text-sm break-all"
+              value={form[k]}
+              onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+            />
+          </label>
+        ))}
+        <button className="btn-primary w-full sm:w-auto">Verify locally via API</button>
+      </form>
+
+      {result ? (
+        <p className="alert-ok">
+          Verified crash <span className="font-extrabold tabular-nums">{result}</span>
+        </p>
+      ) : null}
+
+      <section>
+        <h2 className="section-title">Archived proofs</h2>
+        <ul className="mt-3 space-y-2">
+          {proofs.map((p) => (
+            <li key={p.roundId} className="list-row">
+              <span className="font-semibold text-brand-ink">Round {p.roundId.slice(-6)}</span>
+              <span className="tabular-nums font-bold text-brand-success">
+                {formatBp(p.crashMultiplierBp)}
+                <span className="ml-2 font-medium text-brand-muted">
+                  · nonce {p.nonce}
                   {p.seedRevealed === false ? " · seed pending rotate" : ""}
                 </span>
-              </li>
-            ))}
-            {proofs.length === 0 ? <EmptyState>No archived rounds yet.</EmptyState> : null}
-          </ul>
-        </section>
-      </div>
+              </span>
+            </li>
+          ))}
+          {proofs.length === 0 ? <EmptyState>No archived rounds yet.</EmptyState> : null}
+        </ul>
+      </section>
+    </div>
   );
 }

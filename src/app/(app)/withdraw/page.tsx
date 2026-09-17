@@ -1,49 +1,17 @@
 "use client";
 
-import { api, formatKes } from "@/components/ui/api";
-import { WithdrawPanel } from "@/components/wallet/WithdrawPanel";
-import { PageHeader } from "@/components/ui/chrome";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
+/** Withdraw lives inside Wallet for bettors. */
 export default function WithdrawPage() {
-  const [cash, setCash] = useState<string>("0");
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const w = await api<{ cashCredits: string }>("/api/wallet");
-      setCash(w.cashCredits);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load wallet.");
-    }
-  }, []);
-
+  const router = useRouter();
   useEffect(() => {
-    void load();
-  }, [load]);
-
+    router.replace("/wallet#withdraw");
+  }, [router]);
   return (
-      <div className="mx-auto max-w-lg space-y-6">
-        <PageHeader
-          kicker="Cash out"
-          title="Withdraw to M-PESA"
-          description={
-            <>
-              Available cash <span className="font-semibold text-brand-success">{formatKes(cash)}</span>. Free
-              credits cannot be withdrawn. Payouts arrive on M-PESA within 2–3 business days.
-            </>
-          }
-        />
-        {error ? <p className="alert-error">{error}</p> : null}
-        <WithdrawPanel onUpdated={() => void load()} />
-        <p className="text-sm text-brand-muted">
-          Need to add funds first?{" "}
-          <Link className="link-quiet" href="/wallet#deposit">
-            Deposit with M-PESA
-          </Link>
-        </p>
-      </div>
+    <div className="grid min-h-[40vh] place-items-center px-4">
+      <p className="text-sm text-brand-muted">Opening wallet…</p>
+    </div>
   );
 }

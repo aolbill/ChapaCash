@@ -135,7 +135,7 @@ export default function AdminSeriesPage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold text-brand-ink">Upcoming crashes</h2>
+            <h2 className="section-title">Upcoming crashes</h2>
             <p className="mt-1 text-xs text-brand-muted">
               Cash play. Free-credit rounds use a gentler curve.
               {data.series.rotateRequested ? " After the live round, chips switch to the next series." : ""}
@@ -161,7 +161,7 @@ export default function AdminSeriesPage() {
           </section>
 
           <form onSubmit={rotate} className="card space-y-3 p-5">
-            <h2 className="text-sm font-semibold text-brand-ink">Start a new series</h2>
+            <h2 className="section-title">Start a new series</h2>
             <p className="text-sm text-brand-muted">
               Reveals the current seed for fairness checks and begins a new list. If a round is in progress, the switch
               waits until that round is archived.

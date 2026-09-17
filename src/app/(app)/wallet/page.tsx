@@ -1,7 +1,7 @@
 "use client";
 
 import { patchCachedBalances, useCachedSession } from "@/components/layout/session-cache";
-import { api, formatBp, formatKes } from "@/components/ui/api";
+import { api, formatKes } from "@/components/ui/api";
 import { DepositPanel } from "@/components/wallet/DepositPanel";
 import { WithdrawPanel } from "@/components/wallet/WithdrawPanel";
 import { EmptyState, PageHeader } from "@/components/ui/chrome";
@@ -14,9 +14,6 @@ type Wallet = {
   lifetimeDepositedKes: string;
   deposits: { id: string; amountKes: string; status: string; createdAt: string }[];
   withdrawals: { id: string; amountKes: string; status: string; createdAt: string }[];
-  entries: { id: string; type: string; reason: string; createdAt: string }[];
-  bets: { id: string; stakeCredits: string; status: string; slotIndex: number; walletKind: string }[];
-  cashouts: { id: string; payoutCredits: string; multiplierBp: number }[];
 };
 
 export default function WalletPage() {
@@ -54,107 +51,67 @@ export default function WalletPage() {
   }, [data]);
 
   return (
-      <div className="space-y-8">
-        <PageHeader kicker="Dashboard" title="Your wallet" description="Cash is M-PESA. Free credits are for practice only." />
+    <div className="space-y-8">
+      <PageHeader
+        kicker="Cashier"
+        title="Your wallet"
+        description="Deposit with M-PESA to play for real. Free credits are practice only."
+      />
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="card p-5">
-            <p className="kicker">Cash (M-PESA)</p>
-            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.cashCredits ?? me?.cashCredits)}</p>
-            <p className="mt-2 text-sm text-brand-muted">
-              {data?.hasDeposited
-                ? `Lifetime deposited ${formatKes(data.lifetimeDepositedKes)}`
-                : "No M-PESA deposit yet"}
-            </p>
-          </div>
-          <div className="card p-5">
-            <p className="kicker">Free credits</p>
-            <p className="mt-3 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{formatKes(data?.promoCredits ?? me?.promoCredits)}</p>
-            <p className="mt-2 text-sm text-brand-muted">Practice play with a gentler crash curve.</p>
-          </div>
-          <div className="card p-5">
-            <p className="kicker">How to play</p>
-            <p className="mt-3 text-sm leading-relaxed text-brand-ink">
-              Deposit to stake real shillings. Until then, use free credits on the Play screen.
-            </p>
-          </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="card-success p-5 pl-6">
+          <p className="kicker">Cash (M-PESA)</p>
+          <p className="stat-value mt-3">{formatKes(data?.cashCredits ?? me?.cashCredits)}</p>
+          <p className="mt-2 text-sm text-brand-muted">
+            {data?.hasDeposited
+              ? `Lifetime deposited ${formatKes(data.lifetimeDepositedKes)}`
+              : "No M-PESA deposit yet"}
+          </p>
         </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <DepositPanel onCredited={() => void load()} />
-          <WithdrawPanel onUpdated={() => void load()} />
+        <div className="card p-5">
+          <p className="kicker">Free credits</p>
+          <p className="mt-3 font-mono text-2xl font-extrabold tabular-nums text-brand-ink sm:text-3xl">
+            {formatKes(data?.promoCredits ?? me?.promoCredits)}
+          </p>
+          <p className="mt-2 text-sm text-brand-muted">Practice on Play — cannot be withdrawn.</p>
         </div>
+      </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section>
-            <h2 className="text-sm font-semibold text-brand-ink">Deposits</h2>
-            <ul className="mt-3 space-y-2">
-              {(data?.deposits ?? []).map((d) => (
-                <li key={d.id} className="list-row">
-                  <span className="font-semibold tabular-nums">{formatKes(d.amountKes)}</span>
-                  <span className="min-w-0 break-words text-brand-muted sm:text-right">
-                    {d.status} · {new Date(d.createdAt).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-              {(data?.deposits ?? []).length === 0 ? <EmptyState>No STK deposits yet.</EmptyState> : null}
-            </ul>
-          </section>
-          <section>
-            <h2 className="text-sm font-semibold text-brand-ink">Withdrawals</h2>
-            <ul className="mt-3 space-y-2">
-              {(data?.withdrawals ?? []).map((w) => (
-                <li key={w.id} className="list-row">
-                  <span className="font-semibold tabular-nums">{formatKes(w.amountKes)}</span>
-                  <span className="min-w-0 break-words text-brand-muted sm:text-right">
-                    {w.status} · {new Date(w.createdAt).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-              {(data?.withdrawals ?? []).length === 0 ? <EmptyState>No withdrawals yet.</EmptyState> : null}
-            </ul>
-          </section>
-          <section className="lg:col-span-2">
-            <h2 className="text-sm font-semibold text-brand-ink">Recent activity</h2>
-            <ul className="mt-3 space-y-2">
-              {(data?.entries ?? []).slice(0, 12).map((e) => (
-                <li key={e.id} className="list-row">
-                  <span className="font-medium text-brand-success">{e.type.replace(/_/g, " ")}</span>
-                  <p className="min-w-0 break-words text-brand-muted">{e.reason}</p>
-                </li>
-              ))}
-              {(data?.entries ?? []).length === 0 ? <EmptyState>No ledger activity yet.</EmptyState> : null}
-            </ul>
-          </section>
-        </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DepositPanel onCredited={() => void load()} />
+        <WithdrawPanel onUpdated={() => void load()} />
+      </div>
 
+      <div className="grid gap-6 lg:grid-cols-2">
         <section>
-          <h2 className="text-sm font-semibold text-brand-ink">Bets</h2>
+          <h2 className="section-title">Deposits</h2>
           <ul className="mt-3 space-y-2">
-            {(data?.bets ?? []).map((b) => (
-              <li key={b.id} className="list-row">
-                <span>
-                  Slot {b.slotIndex + 1} · {b.walletKind === "PROMO" ? "Free" : "Cash"} · {formatKes(b.stakeCredits)}
+            {(data?.deposits ?? []).map((d) => (
+              <li key={d.id} className="list-row">
+                <span className="font-semibold tabular-nums text-brand-success">{formatKes(d.amountKes)}</span>
+                <span className="min-w-0 break-words text-brand-muted sm:text-right">
+                  {d.status} · {new Date(d.createdAt).toLocaleString()}
                 </span>
-                <span className="text-brand-muted">{b.status}</span>
               </li>
             ))}
-            {(data?.bets ?? []).length === 0 ? <EmptyState>No bets yet.</EmptyState> : null}
+            {(data?.deposits ?? []).length === 0 ? <EmptyState>No deposits yet.</EmptyState> : null}
           </ul>
         </section>
         <section>
-          <h2 className="text-sm font-semibold text-brand-ink">Cash-outs</h2>
+          <h2 className="section-title">Withdrawals</h2>
           <ul className="mt-3 space-y-2">
-            {(data?.cashouts ?? []).map((c) => (
-              <li key={c.id} className="list-row">
-                <span className="tabular-nums">
-                  {formatKes(c.payoutCredits)} @ {formatBp(c.multiplierBp)}
+            {(data?.withdrawals ?? []).map((w) => (
+              <li key={w.id} className="list-row">
+                <span className="font-semibold tabular-nums">{formatKes(w.amountKes)}</span>
+                <span className="min-w-0 break-words text-brand-muted sm:text-right">
+                  {w.status} · {new Date(w.createdAt).toLocaleString()}
                 </span>
               </li>
             ))}
-            {(data?.cashouts ?? []).length === 0 ? <EmptyState>No cash-outs yet.</EmptyState> : null}
+            {(data?.withdrawals ?? []).length === 0 ? <EmptyState>No withdrawals yet.</EmptyState> : null}
           </ul>
         </section>
       </div>
+    </div>
   );
 }

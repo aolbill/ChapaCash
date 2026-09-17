@@ -42,9 +42,9 @@ export function WithdrawPanel({ onUpdated }: { onUpdated?: () => void }) {
   }
 
   return (
-    <form onSubmit={onWithdraw} className="card scroll-mt-28 space-y-4 p-4 sm:p-5" id="withdraw">
+    <form onSubmit={onWithdraw} className="card-accent scroll-mt-28 space-y-4 p-4 pl-6 sm:p-5 sm:pl-6" id="withdraw">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Withdraw to M-PESA</h2>
+        <h2 className="section-title text-base">Withdraw to M-PESA</h2>
         <p className="mt-1 text-sm leading-relaxed text-brand-muted">
           Cash wallet only. Free credits cannot be withdrawn. After you confirm, the money is sent to
           your M-PESA within 2–3 business days.

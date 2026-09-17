@@ -265,7 +265,7 @@ export default function PlayPage() {
   const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
 
   return (
-    <div className={`${montserrat.className} mx-auto flex h-dvh w-full max-w-[1200px] flex-col overflow-hidden bg-[#0d0d0f] text-[#f2f3f7]`}>
+    <div className={`${montserrat.className} flex h-dvh w-full flex-col overflow-hidden bg-[#0d0d0f] text-[#f2f3f7]`}>
       <PlayHeader
         loggedIn={Boolean(me)}
         role={me?.role}

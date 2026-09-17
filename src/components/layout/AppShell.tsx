@@ -88,7 +88,7 @@ export function AppShell({ children, dense = false }: { children: ReactNode; den
             ? "play-root h-dvh overflow-hidden"
             : isDense
               ? "mx-auto max-w-[1440px] px-3 pb-28 pt-4 sm:px-4 lg:pb-4"
-              : "mx-auto max-w-6xl px-3 pb-28 pt-4 sm:px-4 sm:py-8 lg:pb-8"
+            : "mx-auto max-w-6xl px-3 pb-28 pt-4 text-brand-ink sm:px-4 sm:py-8 lg:pb-8"
         }
       >
         {children}

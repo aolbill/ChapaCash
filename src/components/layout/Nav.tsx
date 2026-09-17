@@ -7,26 +7,24 @@ import { formatKes } from "@/components/ui/api";
 import { BrandMark } from "@/components/ui/chrome";
 import { clearCachedSession } from "@/components/layout/session-cache";
 
+/** Primary destinations for bettors. Fairness / Responsible live under Account. */
 const links = [
   { href: "/play", label: "Play" },
   { href: "/wallet", label: "Wallet" },
-  { href: "/withdraw", label: "Withdraw" },
-  { href: "/fairness", label: "Fairness" },
-  { href: "/responsible", label: "Responsible" },
   { href: "/account", label: "Account" },
 ];
 
 const tabs = [
   { href: "/play", label: "Play" },
   { href: "/wallet", label: "Wallet" },
-  { href: "/withdraw", label: "Cash out" },
-  { href: "/fairness", label: "Fairness" },
+  { href: "/wallet#withdraw", label: "Cash out" },
   { href: "/account", label: "Account" },
 ];
 
 function isActive(path: string | null, href: string) {
-  if (href === "/play") return path === "/play";
-  return Boolean(path?.startsWith(href));
+  const base = href.split("#")[0] ?? href;
+  if (base === "/play") return path === "/play";
+  return Boolean(path?.startsWith(base));
 }
 
 function TabIcon({ href }: { href: string }) {
@@ -41,7 +39,8 @@ function TabIcon({ href }: { href: string }) {
     strokeLinejoin: "round" as const,
     "aria-hidden": true as const,
   };
-  if (href === "/play") {
+  const base = href.split("#")[0] ?? href;
+  if (base === "/play") {
     return (
       <svg {...common}>
         <path d="M4 16c4-1 7-8 8-12 1 4 4 11 8 12" />
@@ -49,16 +48,7 @@ function TabIcon({ href }: { href: string }) {
       </svg>
     );
   }
-  if (href === "/wallet") {
-    return (
-      <svg {...common}>
-        <rect x="3" y="6" width="18" height="13" rx="2" />
-        <path d="M3 10h18" />
-        <circle cx="16.5" cy="14.5" r="1" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (href === "/withdraw") {
+  if (base === "/wallet" && href.includes("withdraw")) {
     return (
       <svg {...common}>
         <path d="M12 4v12" />
@@ -67,11 +57,12 @@ function TabIcon({ href }: { href: string }) {
       </svg>
     );
   }
-  if (href === "/fairness") {
+  if (base === "/wallet") {
     return (
       <svg {...common}>
-        <path d="M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z" />
-        <path d="M9 12l2 2 4-4" />
+        <rect x="3" y="6" width="18" height="13" rx="2" />
+        <path d="M3 10h18" />
+        <circle cx="16.5" cy="14.5" r="1" fill="currentColor" />
       </svg>
     );
   }
@@ -195,9 +186,12 @@ export function Nav({
         style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
         aria-label="Primary"
       >
-        <div className="mx-auto grid max-w-6xl grid-cols-5">
+        <div className="mx-auto grid max-w-6xl grid-cols-4">
           {tabs.map((tab) => {
-            const active = isActive(path, tab.href);
+            const active =
+              tab.href === "/wallet#withdraw"
+                ? path === "/wallet" || path === "/withdraw"
+                : isActive(path, tab.href);
             return (
               <Link
                 key={tab.href}

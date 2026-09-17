@@ -10,10 +10,12 @@ import { clearCachedSession } from "@/components/layout/session-cache";
 const links = [
   { href: "/play", label: "Play" },
   { href: "/wallet", label: "Wallet" },
-  { href: "/withdraw", label: "Withdraw" },
-  { href: "/fairness", label: "Fairness" },
-  { href: "/responsible", label: "Responsible" },
   { href: "/account", label: "Account" },
+];
+
+const secondaryLinks = [
+  { href: "/fairness", label: "Fairness" },
+  { href: "/responsible", label: "Responsible play" },
 ];
 
 export function PlayLogo({ href = "/play" }: { href?: string }) {
@@ -130,6 +132,15 @@ export function PlayHeader({
                 key={l.href}
                 href={l.href}
                 className="min-h-11 rounded-lg bg-[#1d1e24] px-3 py-2.5 text-sm font-bold text-[#f2f3f7]"
+              >
+                {l.label}
+              </Link>
+            ))}
+            {secondaryLinks.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="min-h-11 rounded-lg bg-[#1d1e24]/70 px-3 py-2.5 text-sm font-bold text-[#8b8e99]"
               >
                 {l.label}
               </Link>
