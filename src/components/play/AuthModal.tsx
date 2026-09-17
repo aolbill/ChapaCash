@@ -24,6 +24,7 @@ export function AuthModal({
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,6 +69,11 @@ export function AuthModal({
     e.preventDefault();
     setBusy(true);
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setBusy(false);
+      return;
+    }
     try {
       const data = await api<{ user: AuthUser }>("/api/auth/register", {
         method: "POST",
@@ -75,6 +81,7 @@ export function AuthModal({
           phone,
           email,
           password,
+          confirmPassword,
           displayName,
           ageConfirmed,
         }),
@@ -195,6 +202,16 @@ export function AuthModal({
                 autoComplete="new-password"
               />
               <p className="mt-1 text-[11px] text-[#8b8e99]">At least 8 characters, with uppercase, lowercase, and a number.</p>
+              <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Confirm password</label>
+              <input
+                className="w-full rounded-[10px] border border-[#2a2c34] bg-[#0d0d0f] px-3 py-3 text-[15px] text-[#f2f3f7] outline-none focus:border-[#2fbf4e]"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
               <label className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-[#8b8e99]">
                 <input
                   type="checkbox"

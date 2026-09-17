@@ -1,31 +1,37 @@
 import { z } from "zod";
 
-export const registerSchema = z.object({
-  phone: z.string().min(9, "Enter your M-PESA phone number."),
-  email: z
-    .string({ required_error: "Enter your email address." })
-    .trim()
-    .toLowerCase()
-    .email("Enter a valid email address.")
-    .refine((v) => !v.endsWith(".local") && !v.endsWith("@phone.chapacash.local"), {
-      message: "Enter a real email address.",
+export const registerSchema = z
+  .object({
+    phone: z.string().min(9, "Enter your M-PESA phone number."),
+    email: z
+      .string({ required_error: "Enter your email address." })
+      .trim()
+      .toLowerCase()
+      .email("Enter a valid email address.")
+      .refine((v) => !v.endsWith(".local") && !v.endsWith("@phone.chapacash.local"), {
+        message: "Enter a real email address.",
+      }),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters.")
+      .max(200)
+      .regex(/[a-z]/, "Password needs a lowercase letter.")
+      .regex(/[A-Z]/, "Password needs an uppercase letter.")
+      .regex(/[0-9]/, "Password needs a number."),
+    confirmPassword: z.string().min(1, "Confirm your password."),
+    displayName: z
+      .string()
+      .trim()
+      .min(2, "Display name must be at least 2 characters.")
+      .max(40, "Display name is too long."),
+    ageConfirmed: z.literal(true, {
+      errorMap: () => ({ message: "You must confirm you are 18 or older." }),
     }),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters.")
-    .max(200)
-    .regex(/[a-z]/, "Password needs a lowercase letter.")
-    .regex(/[A-Z]/, "Password needs an uppercase letter.")
-    .regex(/[0-9]/, "Password needs a number."),
-  displayName: z
-    .string()
-    .trim()
-    .min(2, "Display name must be at least 2 characters.")
-    .max(40, "Display name is too long."),
-  ageConfirmed: z.literal(true, {
-    errorMap: () => ({ message: "You must confirm you are 18 or older." }),
-  }),
-});
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
 
 export const loginSchema = z.object({
   identifier: z.string().min(3, "Enter your phone number or email."),
