@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { BrandMark } from "@/components/ui/chrome";
 import { api } from "@/components/ui/api";
-import { Suspense } from "react";
+import { RedirectIfAuthed } from "@/components/auth/RedirectIfAuthed";
 
 function ResetPasswordForm() {
   const search = useSearchParams();
@@ -109,19 +109,21 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-4 py-10">
-      <div className="mb-8">
-        <BrandMark href="/play" />
+    <RedirectIfAuthed>
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-4 py-10">
+        <div className="mb-8">
+          <BrandMark href="/play" />
+        </div>
+        <Suspense
+          fallback={
+            <div className="card p-6 sm:p-8">
+              <p className="text-sm text-brand-muted">Loading reset form…</p>
+            </div>
+          }
+        >
+          <ResetPasswordForm />
+        </Suspense>
       </div>
-      <Suspense
-        fallback={
-          <div className="card p-6 sm:p-8">
-            <p className="text-sm text-brand-muted">Loading reset form…</p>
-          </div>
-        }
-      >
-        <ResetPasswordForm />
-      </Suspense>
-    </div>
+    </RedirectIfAuthed>
   );
 }

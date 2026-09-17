@@ -12,7 +12,7 @@ export function BrandMark({ href = "/", compact = false }: { href?: string; comp
       {compact ? (
         <span className="sr-only">{SITE_NAME}</span>
       ) : (
-        <span className="hidden truncate text-[17px] font-extrabold tracking-wide text-brand-ink min-[380px]:inline">
+        <span className="truncate text-[15px] font-extrabold tracking-wide text-brand-ink sm:text-[17px]">
           CHAPA
           <span className="ml-1 inline-block rounded-md bg-brand-wine px-1.5 py-0.5 text-white">CASH</span>
         </span>

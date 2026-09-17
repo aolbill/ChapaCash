@@ -81,8 +81,14 @@ export default function PlayPage() {
   const [history, setHistory] = useState<HistoryRound[]>([]);
 
   const closeAuth = useCallback(() => setAuthMode(null), []);
-  const openLogin = useCallback(() => setAuthMode("login"), []);
-  const openRegister = useCallback(() => setAuthMode("register"), []);
+  const openLogin = useCallback(() => {
+    if (getCachedSession()) return;
+    setAuthMode("login");
+  }, []);
+  const openRegister = useCallback(() => {
+    if (getCachedSession()) return;
+    setAuthMode("register");
+  }, []);
 
   const refreshGen = useRef(0);
   const serverOffsetRef = useRef(0);
@@ -105,6 +111,10 @@ export default function PlayPage() {
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (me && authMode) setAuthMode(null);
+  }, [me, authMode]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("auth");
@@ -332,7 +342,7 @@ export default function PlayPage() {
           {error ? <p className="mt-2 text-center text-xs font-bold text-[#ff6b76]">{error}</p> : null}
         </div>
       </div>
-      {authMode ? (
+      {authMode && !me ? (
         <AuthModal
           mode={authMode}
           onMode={(next) => setAuthMode(next)}

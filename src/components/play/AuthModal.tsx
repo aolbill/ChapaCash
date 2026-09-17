@@ -73,7 +73,7 @@ export function AuthModal({
         method: "POST",
         body: JSON.stringify({
           phone,
-          email: email || undefined,
+          email,
           password,
           displayName,
           ageConfirmed,
@@ -173,14 +173,17 @@ export function AuthModal({
                 required
                 autoComplete="tel"
               />
-              <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Email (optional, for password reset)</label>
+              <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Email</label>
               <input
                 className="w-full rounded-[10px] border border-[#2a2c34] bg-[#0d0d0f] px-3 py-3 text-[15px] text-[#f2f3f7] outline-none focus:border-[#2fbf4e]"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 autoComplete="email"
+                required
+                placeholder="you@example.com"
               />
+              <p className="mt-1 text-[11px] text-[#8b8e99]">Required for login recovery and password reset.</p>
               <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Password</label>
               <input
                 className="w-full rounded-[10px] border border-[#2a2c34] bg-[#0d0d0f] px-3 py-3 text-[15px] text-[#f2f3f7] outline-none focus:border-[#2fbf4e]"

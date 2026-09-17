@@ -4,8 +4,9 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { BrandMark } from "@/components/ui/chrome";
 import { api } from "@/components/ui/api";
+import { RedirectIfAuthed } from "@/components/auth/RedirectIfAuthed";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,5 +79,13 @@ export default function ForgotPasswordPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <RedirectIfAuthed>
+      <ForgotPasswordForm />
+    </RedirectIfAuthed>
   );
 }

@@ -2,10 +2,14 @@ import { z } from "zod";
 
 export const registerSchema = z.object({
   phone: z.string().min(9, "Enter your M-PESA phone number."),
-  email: z.preprocess(
-    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
-    z.string().trim().toLowerCase().email("Enter a valid email address.").optional(),
-  ),
+  email: z
+    .string({ required_error: "Enter your email address." })
+    .trim()
+    .toLowerCase()
+    .email("Enter a valid email address.")
+    .refine((v) => !v.endsWith(".local") && !v.endsWith("@phone.chapacash.local"), {
+      message: "Enter a real email address.",
+    }),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters.")
