@@ -2,10 +2,14 @@ import { z } from "zod";
 
 export const registerSchema = z.object({
   phone: z.string().min(9, "Enter your M-PESA phone number."),
-  email: z.preprocess(
-    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
-    z.string().trim().toLowerCase().email("Enter a valid email address.").optional(),
-  ),
+  email: z
+    .string({ required_error: "Enter your email address." })
+    .trim()
+    .toLowerCase()
+    .email("Enter a valid email address.")
+    .refine((v) => !v.endsWith(".local") && !v.endsWith("@phone.chapacash.local"), {
+      message: "Enter a real email address.",
+    }),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters.")
@@ -51,15 +55,26 @@ export const cashoutSchema = z.object({
   idempotencyKey: z.string().uuid(),
 });
 
+const newPasswordRules = z
+  .string()
+  .min(8, "Password must be at least 8 characters.")
+  .max(200)
+  .regex(/[a-z]/, "Password needs a lowercase letter.")
+  .regex(/[A-Z]/, "Password needs an uppercase letter.")
+  .regex(/[0-9]/, "Password needs a number.");
+
 export const passwordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z
-    .string()
-    .min(8, "Password must be at least 8 characters.")
-    .max(200)
-    .regex(/[a-z]/, "Password needs a lowercase letter.")
-    .regex(/[A-Z]/, "Password needs an uppercase letter.")
-    .regex(/[0-9]/, "Password needs a number."),
+  newPassword: newPasswordRules,
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, "Reset link is invalid or incomplete."),
+  newPassword: newPasswordRules,
 });
 
 export const fairnessVerifySchema = z.object({

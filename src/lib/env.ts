@@ -32,9 +32,16 @@ const schema = z.object({
   RATE_LIMIT_DEPOSIT_PER_MIN: z.string().default("8"),
   RATE_LIMIT_WITHDRAW_PER_MIN: z.string().default("5"),
   RATE_LIMIT_ADMIN_PER_MIN: z.string().default("30"),
+  RATE_LIMIT_PASSWORD_RESET_PER_MIN: z.string().default("5"),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("ChapaCash <onboarding@resend.dev>"),
 });
 
 export const env = schema.parse(process.env);
+
+export function resendConfigured(): boolean {
+  return Boolean(env.RESEND_API_KEY && env.RESEND_API_KEY !== "CHANGE_ME");
+}
 
 export function cookieSecure(): boolean {
   return env.COOKIE_SECURE === "true" || env.NODE_ENV === "production";

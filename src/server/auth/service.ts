@@ -8,7 +8,7 @@ import { creditsFromString } from "@/domain/money";
 import { promoPostings } from "@/domain/ledger";
 import { postLedger } from "@/server/ledger/service";
 import { ResponsiblePlaySetting, Session, User, WalletAccount } from "@/server/db/models";
-import { looksLikePhone, normalizeKenyaPhone, placeholderEmail } from "@/domain/phone";
+import { looksLikePhone, normalizeKenyaPhone } from "@/domain/phone";
 
 const ARGON = { memoryCost: 19456, timeCost: 2, outputLen: 32, parallelism: 1 };
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -119,7 +119,7 @@ export async function ensurePlayerAccounts(userId: string) {
 }
 
 export async function createUser(input: {
-  email?: string | null;
+  email: string;
   phone: string;
   password: string;
   displayName: string;
@@ -128,7 +128,10 @@ export async function createUser(input: {
 }) {
   await connectMongo();
   const phone = normalizeKenyaPhone(input.phone);
-  const email = (input.email?.trim().toLowerCase() || placeholderEmail(phone)).toLowerCase();
+  const email = input.email.trim().toLowerCase();
+  if (!email || email.endsWith(".local")) {
+    throw new ApiError("invalid_input", 400, "Enter a real email address.");
+  }
   const existingPhone = await User.findOne({ phone });
   if (existingPhone) {
     const userId = String(existingPhone._id);

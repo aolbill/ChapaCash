@@ -74,7 +74,7 @@ export default function WalletPage() {
           </div>
           <div className="card p-5">
             <p className="kicker">How to play</p>
-            <p className="mt-3 text-sm leading-relaxed text-brand-wineDark">
+            <p className="mt-3 text-sm leading-relaxed text-brand-ink">
               Deposit to stake real shillings. Until then, use free credits on the Play screen.
             </p>
           </div>
@@ -87,7 +87,7 @@ export default function WalletPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <section>
-            <h2 className="text-sm font-semibold text-brand-wine">Deposits</h2>
+            <h2 className="text-sm font-semibold text-brand-ink">Deposits</h2>
             <ul className="mt-3 space-y-2">
               {(data?.deposits ?? []).map((d) => (
                 <li key={d.id} className="list-row">
@@ -101,7 +101,7 @@ export default function WalletPage() {
             </ul>
           </section>
           <section>
-            <h2 className="text-sm font-semibold text-brand-wine">Withdrawals</h2>
+            <h2 className="text-sm font-semibold text-brand-ink">Withdrawals</h2>
             <ul className="mt-3 space-y-2">
               {(data?.withdrawals ?? []).map((w) => (
                 <li key={w.id} className="list-row">
@@ -115,7 +115,7 @@ export default function WalletPage() {
             </ul>
           </section>
           <section className="lg:col-span-2">
-            <h2 className="text-sm font-semibold text-brand-wine">Recent activity</h2>
+            <h2 className="text-sm font-semibold text-brand-ink">Recent activity</h2>
             <ul className="mt-3 space-y-2">
               {(data?.entries ?? []).slice(0, 12).map((e) => (
                 <li key={e.id} className="list-row">
@@ -129,7 +129,7 @@ export default function WalletPage() {
         </div>
 
         <section>
-          <h2 className="text-sm font-semibold text-brand-wine">Bets</h2>
+          <h2 className="text-sm font-semibold text-brand-ink">Bets</h2>
           <ul className="mt-3 space-y-2">
             {(data?.bets ?? []).map((b) => (
               <li key={b.id} className="list-row">
@@ -143,7 +143,7 @@ export default function WalletPage() {
           </ul>
         </section>
         <section>
-          <h2 className="text-sm font-semibold text-brand-wine">Cash-outs</h2>
+          <h2 className="text-sm font-semibold text-brand-ink">Cash-outs</h2>
           <ul className="mt-3 space-y-2">
             {(data?.cashouts ?? []).map((c) => (
               <li key={c.id} className="list-row">

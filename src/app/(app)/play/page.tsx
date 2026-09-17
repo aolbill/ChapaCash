@@ -81,8 +81,14 @@ export default function PlayPage() {
   const [history, setHistory] = useState<HistoryRound[]>([]);
 
   const closeAuth = useCallback(() => setAuthMode(null), []);
-  const openLogin = useCallback(() => setAuthMode("login"), []);
-  const openRegister = useCallback(() => setAuthMode("register"), []);
+  const openLogin = useCallback(() => {
+    if (getCachedSession()) return;
+    setAuthMode("login");
+  }, []);
+  const openRegister = useCallback(() => {
+    if (getCachedSession()) return;
+    setAuthMode("register");
+  }, []);
 
   const refreshGen = useRef(0);
   const serverOffsetRef = useRef(0);
@@ -105,6 +111,10 @@ export default function PlayPage() {
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (me && authMode) setAuthMode(null);
+  }, [me, authMode]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("auth");
@@ -255,7 +265,7 @@ export default function PlayPage() {
   const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
 
   return (
-    <div className={`${montserrat.className} flex h-dvh max-w-[1200px] flex-col overflow-hidden bg-[#0d0d0f] text-[#f2f3f7]`}>
+    <div className={`${montserrat.className} mx-auto flex h-dvh w-full max-w-[1200px] flex-col overflow-hidden bg-[#0d0d0f] text-[#f2f3f7]`}>
       <PlayHeader
         loggedIn={Boolean(me)}
         role={me?.role}
@@ -266,10 +276,10 @@ export default function PlayPage() {
         onLogin={openLogin}
         onRegister={openRegister}
       />
-      <div className="relative h-9 overflow-hidden border-b border-[#2a2c34] bg-gradient-to-r from-[#1a1206] via-[#241708] to-[#1a1206]">
-        <div className="flex h-full w-max items-center whitespace-nowrap text-[13px] font-bold text-[#ffd88a] [animation:playPromo_22s_linear_infinite] hover:[animation-play-state:paused]">
+      <div className="relative h-8 overflow-hidden border-b border-[#2a2c34] bg-gradient-to-r from-[#1a1206] via-[#241708] to-[#1a1206] sm:h-9">
+        <div className="flex h-full w-max items-center whitespace-nowrap text-[11px] font-bold text-[#ffd88a] [animation:playPromo_22s_linear_infinite] hover:[animation-play-state:paused] sm:text-[13px]">
           {[0, 1].map((copy) => (
-            <span key={copy} className="inline-flex items-center gap-2 px-10">
+            <span key={copy} className="inline-flex items-center gap-2 px-6 sm:px-10">
               <span className="rounded bg-[#e11d2a] px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide text-white">
                 BONUS
               </span>
@@ -288,11 +298,11 @@ export default function PlayPage() {
         </div>
       </div>
       <HistoryStrip rounds={history} />
-      <div className="flex min-h-0 flex-1 max-[820px]:flex-col max-[820px]:overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <div className="order-3 flex min-h-0 lg:order-1">
           <LiveBets bets={state?.bets ?? []} meId={meId} crashed={crashed} />
         </div>
-        <div className="order-1 flex min-w-0 flex-1 flex-col p-2.5 max-[820px]:flex-none max-[820px]:p-2 lg:order-2">
+        <div className="order-1 flex min-w-0 flex-1 flex-col p-2 sm:p-2.5 lg:order-2">
           <FlightStage
             status={state?.round?.status}
             displayBp={displayBp}
@@ -303,7 +313,7 @@ export default function PlayPage() {
             freePlay={resolvedKind === "PROMO"}
             playerCount={state?.bets?.length}
           />
-          <div className="mt-2.5 flex gap-2.5 max-[820px]:flex-col max-[820px]:gap-2">
+          <div className="mt-2 flex gap-2 sm:mt-2.5 sm:gap-2.5 max-sm:flex-col">
             <BetSlip
               slotIndex={0}
               stake={stake0}
@@ -332,7 +342,7 @@ export default function PlayPage() {
           {error ? <p className="mt-2 text-center text-xs font-bold text-[#ff6b76]">{error}</p> : null}
         </div>
       </div>
-      {authMode ? (
+      {authMode && !me ? (
         <AuthModal
           mode={authMode}
           onMode={(next) => setAuthMode(next)}

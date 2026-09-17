@@ -95,9 +95,9 @@ export function BetSlip({
             : "bg-gradient-to-b from-[#2fbf4e] to-[#249b3e] shadow-[0_4px_0_#1c7a30]";
 
   return (
-    <section className="flex flex-1 items-center gap-3 rounded-[14px] border border-[#2a2c34] bg-[#16171b] p-3">
-      <div className="shrink-0 text-center">
-        <div className="mb-2 flex items-center gap-2.5">
+    <section className="flex flex-1 items-center gap-2 rounded-[14px] border border-[#2a2c34] bg-[#16171b] p-2.5 sm:gap-3 sm:p-3 max-[380px]:flex-col max-[380px]:items-stretch">
+      <div className="shrink-0 text-center max-[380px]:w-full">
+        <div className="mb-2 flex items-center justify-center gap-2.5">
           <button
             type="button"
             className="h-[30px] w-[30px] rounded-full border border-[#2a2c34] bg-[#1d1e24] text-lg text-[#f2f3f7] disabled:opacity-40"
@@ -118,7 +118,7 @@ export function BetSlip({
             +
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-2 gap-1 max-[380px]:grid-cols-4">
           {PRESETS.map((p) => (
             <button
               key={p}
@@ -156,10 +156,10 @@ export function BetSlip({
         type="button"
         disabled={busy || mode === "queued" || mode === "done" || mode === "lost" || (mode === "bet" && !canBet)}
         onClick={() => (mode === "cash" && mine ? onCash(mine.id) : onBet(slotIndex))}
-        className={`min-h-[88px] flex-1 rounded-xl font-extrabold text-white disabled:opacity-50 max-[420px]:min-h-[62px] ${btnClass}`}
+        className={`min-h-[72px] flex-1 rounded-xl font-extrabold text-white disabled:opacity-50 sm:min-h-[88px] max-[380px]:min-h-[56px] ${btnClass}`}
       >
-        <span className="text-[17px] max-[420px]:text-[15px]">{label}</span>
-        <small className="mt-0.5 block text-xl font-black max-[420px]:text-[17px]">{amount}</small>
+        <span className="text-[15px] sm:text-[17px]">{label}</span>
+        <small className="mt-0.5 block text-lg font-black sm:text-xl">{amount}</small>
         <span className="sr-only">{walletKind}</span>
       </button>
     </section>

@@ -31,7 +31,7 @@ export default function WithdrawPage() {
           title="Withdraw to M-PESA"
           description={
             <>
-              Available cash <span className="font-semibold text-brand-wine">{formatKes(cash)}</span>. Free
+              Available cash <span className="font-semibold text-brand-success">{formatKes(cash)}</span>. Free
               credits cannot be withdrawn. Payouts arrive on M-PESA within 2–3 business days.
             </>
           }

@@ -6,8 +6,8 @@ export default function ResponsiblePage() {
       <article className="mx-auto max-w-2xl space-y-6">
         <PageHeader kicker="Play safe" title="Responsible play" />
         <div className="card space-y-4 p-6 text-sm leading-relaxed">
-          <p className="font-medium text-brand-wine">{SITE_BANNER}</p>
-          <p className="text-brand-wineDark">
+          <p className="font-medium text-brand-ink">{SITE_BANNER}</p>
+          <p className="text-brand-ink">
             Deposits are real Kenyan shillings via Paystack M-PESA. You can lose money. Only use funds you
             can afford to lose. Session, loss, and self-exclusion limits are not fully enforced yet.
           </p>

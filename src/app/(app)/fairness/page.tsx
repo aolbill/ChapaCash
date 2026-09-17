@@ -78,7 +78,7 @@ export default function FairnessPage() {
         </form>
         {result ? <p className="alert-ok">{result}</p> : null}
         <section>
-          <h2 className="text-sm font-semibold text-brand-wine">Archived proofs</h2>
+          <h2 className="text-sm font-semibold text-brand-ink">Archived proofs</h2>
           <ul className="mt-3 space-y-2">
             {proofs.map((p) => (
               <li key={p.roundId} className="list-row">

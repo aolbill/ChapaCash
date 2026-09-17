@@ -20,6 +20,7 @@ const tabs = [
   { href: "/play", label: "Play" },
   { href: "/wallet", label: "Wallet" },
   { href: "/withdraw", label: "Cash out" },
+  { href: "/fairness", label: "Fairness" },
   { href: "/account", label: "Account" },
 ];
 
@@ -66,6 +67,14 @@ function TabIcon({ href }: { href: string }) {
       </svg>
     );
   }
+  if (href === "/fairness") {
+    return (
+      <svg {...common}>
+        <path d="M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z" />
+        <path d="M9 12l2 2 4-4" />
+      </svg>
+    );
+  }
   return (
     <svg {...common}>
       <circle cx="12" cy="8" r="3.2" />
@@ -102,8 +111,8 @@ export function Nav({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-brand-sand/60 bg-brand-cream/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+      <header className="sticky top-0 z-30 border-b border-brand-sand bg-gradient-to-b from-[#16171b] to-[#101114]/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
           <BrandMark href="/play" />
           <nav className="hidden items-center gap-0.5 text-sm lg:flex">
             {allLinks.map((l) => (
@@ -112,17 +121,17 @@ export function Nav({
                 href={l.href}
                 className={`rounded-lg px-3 py-1.5 font-medium transition ${
                   isActive(path, l.href)
-                    ? "bg-brand-wine text-brand-paper"
-                    : "text-brand-wine/80 hover:bg-brand-sand/35 hover:text-brand-wine"
+                    ? "bg-brand-wine text-white"
+                    : "text-brand-muted hover:bg-brand-surface hover:text-brand-ink"
                 }`}
               >
                 {l.label}
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-3">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-3">
             <div className="min-w-0 text-right">
-              <p className="truncate text-xs font-semibold tabular-nums text-brand-wine sm:text-sm">
+              <p className="truncate text-xs font-semibold tabular-nums text-brand-success sm:text-sm">
                 {formatKes(cashCredits)}
               </p>
               <p className="hidden truncate text-[11px] text-brand-muted sm:block">
@@ -144,7 +153,7 @@ export function Nav({
             </button>
             <button
               type="button"
-              className="hidden text-sm font-medium text-brand-muted hover:text-brand-wine lg:inline"
+              className="hidden text-sm font-medium text-brand-muted hover:text-brand-ink lg:inline"
               onClick={() => void logout()}
             >
               Log out
@@ -152,9 +161,9 @@ export function Nav({
           </div>
         </div>
         {open ? (
-          <div className="border-t border-brand-sand/60 bg-brand-cream px-3 py-3 lg:hidden sm:px-4">
+          <div className="border-t border-brand-sand bg-[#16171b] px-3 py-3 lg:hidden sm:px-4">
             <div className="mx-auto max-w-6xl space-y-3">
-              <p className="text-sm font-semibold tabular-nums sm:hidden">
+              <p className="text-sm font-semibold tabular-nums text-brand-ink sm:hidden">
                 {formatKes(cashCredits)} cash · {formatKes(promoCredits)} free
               </p>
               <nav className="grid grid-cols-2 gap-1.5">
@@ -163,7 +172,7 @@ export function Nav({
                     key={l.href}
                     href={l.href}
                     className={`min-h-11 rounded-lg px-3 py-2.5 text-sm font-medium ${
-                      isActive(path, l.href) ? "bg-brand-wine text-brand-paper" : "bg-white text-brand-wine"
+                      isActive(path, l.href) ? "bg-brand-wine text-white" : "bg-brand-surface text-brand-ink"
                     }`}
                   >
                     {l.label}
@@ -172,7 +181,7 @@ export function Nav({
               </nav>
               <button
                 type="button"
-                className="min-h-11 w-full rounded-lg bg-white px-3 py-2.5 text-left text-sm font-medium text-brand-muted"
+                className="min-h-11 w-full rounded-lg bg-brand-surface px-3 py-2.5 text-left text-sm font-medium text-brand-muted"
                 onClick={() => void logout()}
               >
                 Log out
@@ -182,11 +191,11 @@ export function Nav({
         ) : null}
       </header>
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-sand/70 bg-brand-cream/95 backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-sand bg-[#16171b]/95 backdrop-blur-md lg:hidden"
         style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
         aria-label="Primary"
       >
-        <div className="mx-auto grid max-w-6xl grid-cols-4">
+        <div className="mx-auto grid max-w-6xl grid-cols-5">
           {tabs.map((tab) => {
             const active = isActive(path, tab.href);
             return (
@@ -194,7 +203,7 @@ export function Nav({
                 key={tab.href}
                 href={tab.href}
                 className={`flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-semibold ${
-                  active ? "text-brand-wine" : "text-brand-muted"
+                  active ? "text-brand-success" : "text-brand-muted"
                 }`}
               >
                 <TabIcon href={tab.href} />

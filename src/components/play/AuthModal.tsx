@@ -73,7 +73,7 @@ export function AuthModal({
         method: "POST",
         body: JSON.stringify({
           phone,
-          email: email || undefined,
+          email,
           password,
           displayName,
           ageConfirmed,
@@ -95,7 +95,7 @@ export function AuthModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[380px] rounded-[18px] border border-[#2a2c34] bg-[#16171b] p-[22px] text-[#f2f3f7] shadow-[0_20px_60px_rgba(0,0,0,.6)]"
+        className="relative max-h-[min(92dvh,680px)] w-full max-w-[380px] overflow-y-auto rounded-[18px] border border-[#2a2c34] bg-[#16171b] p-4 text-[#f2f3f7] shadow-[0_20px_60px_rgba(0,0,0,.6)] sm:p-[22px]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -129,6 +129,11 @@ export function AuthModal({
                 autoComplete="current-password"
                 required
               />
+              <div className="mt-2 text-right">
+                <a href="/forgot-password" className="text-[12px] font-bold text-[#2fbf4e] no-underline hover:underline">
+                  Forgot password?
+                </a>
+              </div>
               {error ? <p className="mt-2.5 min-h-3.5 text-xs text-[#ff6b76]">{error}</p> : null}
               <button
                 disabled={busy}
@@ -168,14 +173,17 @@ export function AuthModal({
                 required
                 autoComplete="tel"
               />
-              <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Email (optional)</label>
+              <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Email</label>
               <input
                 className="w-full rounded-[10px] border border-[#2a2c34] bg-[#0d0d0f] px-3 py-3 text-[15px] text-[#f2f3f7] outline-none focus:border-[#2fbf4e]"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
                 autoComplete="email"
+                required
+                placeholder="you@example.com"
               />
+              <p className="mt-1 text-[11px] text-[#8b8e99]">Required for login recovery and password reset.</p>
               <label className="mb-1 mt-3 block text-xs text-[#8b8e99]">Password</label>
               <input
                 className="w-full rounded-[10px] border border-[#2a2c34] bg-[#0d0d0f] px-3 py-3 text-[15px] text-[#f2f3f7] outline-none focus:border-[#2fbf4e]"

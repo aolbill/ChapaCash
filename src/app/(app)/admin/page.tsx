@@ -71,7 +71,7 @@ export default function AdminPage() {
               Active round {data.activeRound?.roundNumber ?? "—"} · {data.activeRound?.status ?? "none"}
             </p>
             <section>
-              <h2 className="text-sm font-semibold text-brand-wine">Recent rounds</h2>
+              <h2 className="text-sm font-semibold text-brand-ink">Recent rounds</h2>
               <ul className="mt-3 space-y-2">
                 {data.recentRounds.map((r) => (
                   <li key={r.id} className="list-row">

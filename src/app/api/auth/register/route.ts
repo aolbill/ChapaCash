@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     try {
       const user = await createUser({
         phone: body.phone,
-        email: body.email || null,
+        email: body.email,
         password: body.password,
         displayName: body.displayName,
         ageConfirmed: body.ageConfirmed,

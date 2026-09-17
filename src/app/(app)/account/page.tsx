@@ -47,7 +47,7 @@ export default function AccountPage() {
           </p>
         </section>
         <form onSubmit={onPassword} className="card space-y-4 p-5">
-          <h2 className="text-sm font-semibold text-brand-wine">Change password</h2>
+          <h2 className="text-sm font-semibold text-brand-ink">Change password</h2>
           <label className="label">
             Current password
             <input
@@ -74,7 +74,7 @@ export default function AccountPage() {
           {error ? <p className="alert-error">{error}</p> : null}
         </form>
         <section>
-          <h2 className="text-sm font-semibold text-brand-wine">Sessions</h2>
+          <h2 className="text-sm font-semibold text-brand-ink">Sessions</h2>
           <ul className="mt-3 space-y-2">
             {sessions.map((s) => (
               <li key={s.id} className="list-row flex-col items-start">

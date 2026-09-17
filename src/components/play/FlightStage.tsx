@@ -113,7 +113,7 @@ export function FlightStage({
   const ring = countdown != null ? Math.max(0, Math.min(1, countdown / windowSec)) : 0;
 
   return (
-    <div className="relative min-h-[240px] overflow-hidden rounded-2xl bg-[#11131c] max-[820px]:h-[44vh] max-[820px]:min-h-[240px] sm:min-h-[320px] lg:min-h-0 lg:flex-1">
+    <div className="relative min-h-[200px] overflow-hidden rounded-2xl bg-[#11131c] max-lg:h-[min(42vh,340px)] sm:min-h-[280px] lg:min-h-0 lg:flex-1">
       {freePlay ? (
         <p className="absolute inset-x-0 top-0 z-[6] bg-gradient-to-r from-[#a9812a] via-[#e6c05a] to-[#a9812a] py-1 text-center text-[11px] font-extrabold tracking-[2px] text-black">
           FREE PLAY
@@ -160,7 +160,7 @@ export function FlightStage({
         </div>
       ) : null}
 
-      <div className="relative z-10 flex h-full min-h-[240px] flex-col items-center justify-center max-[820px]:min-h-[44vh] sm:min-h-[320px] lg:min-h-full">
+      <div className="relative z-10 flex h-full min-h-[200px] flex-col items-center justify-center max-lg:min-h-[min(42vh,340px)] sm:min-h-[280px] lg:min-h-full">
         {waiting ? (
           <div className="flex flex-col items-center gap-3">
             <div className="relative grid h-28 w-28 place-items-center">
@@ -195,7 +195,7 @@ export function FlightStage({
               <p className="mb-1 text-sm font-extrabold uppercase tracking-[0.28em] text-[#ff4d57]">Flew away!</p>
             ) : null}
             <p
-              className={`font-mono text-6xl font-bold tabular-nums tracking-tight sm:text-7xl lg:text-8xl ${
+              className={`font-mono text-5xl font-bold tabular-nums tracking-tight sm:text-7xl lg:text-8xl ${
                 crashed ? "text-[#ff4d57]" : "text-white"
               }`}
             >

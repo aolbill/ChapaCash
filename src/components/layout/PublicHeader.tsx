@@ -3,7 +3,7 @@ import { BrandMark } from "@/components/ui/chrome";
 
 export function PublicHeader({ active }: { active?: "login" | "register" }) {
   return (
-    <header className="border-b border-brand-sand/60 bg-brand-cream/80 backdrop-blur-md">
+    <header className="border-b border-brand-sand bg-gradient-to-b from-[#16171b] to-[#101114]/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
         <BrandMark />
         <div className="flex shrink-0 items-center gap-2">
