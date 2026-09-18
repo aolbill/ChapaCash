@@ -304,6 +304,7 @@ export default function PlayPage() {
         <div className="order-3 flex min-h-0 lg:order-1">
           <LiveBets
             bets={state?.bets ?? []}
+            myBets={myBets}
             meId={meId}
             crashed={crashed}
             activePlayers={activePlayers}
