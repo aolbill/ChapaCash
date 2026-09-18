@@ -7,6 +7,7 @@ import { FlightStage, useLiveMultiplier } from "@/components/play/FlightStage";
 import { HistoryStrip } from "@/components/play/HistoryStrip";
 import { LiveBets } from "@/components/play/LiveBets";
 import { PlayHeader } from "@/components/play/PlayHeader";
+import { useLivePlayerPresence } from "@/components/play/useLivePlayerPresence";
 import type { HistoryRound, RoundStatePayload, WalletKind } from "@/components/play/types";
 import { api } from "@/components/ui/api";
 import { Montserrat } from "next/font/google";
@@ -263,6 +264,7 @@ export default function PlayPage() {
   const crashed = state?.round?.status === "CRASHED" || state?.round?.status === "SETTLED";
   const serverBp = crashed ? (state?.round?.crashMultiplierBp ?? 100) : (state?.multiplierBp ?? 100);
   const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
+  const { activePlayers, presenceBets } = useLivePlayerPresence(state?.bets?.length ?? 0);
 
   return (
     <div className={`${montserrat.className} flex h-dvh w-full flex-col overflow-hidden bg-[#0d0d0f] text-[#f2f3f7]`}>
@@ -300,7 +302,13 @@ export default function PlayPage() {
       <HistoryStrip rounds={history} />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <div className="order-3 flex min-h-0 lg:order-1">
-          <LiveBets bets={state?.bets ?? []} meId={meId} crashed={crashed} />
+          <LiveBets
+            bets={state?.bets ?? []}
+            meId={meId}
+            crashed={crashed}
+            activePlayers={activePlayers}
+            presenceBets={presenceBets}
+          />
         </div>
         <div className="order-1 flex min-w-0 flex-1 flex-col p-2 sm:p-2.5 lg:order-2">
           <FlightStage
@@ -311,7 +319,7 @@ export default function PlayPage() {
             bettingClosesAt={state?.round?.bettingClosesAt}
             connected={connected}
             freePlay={resolvedKind === "PROMO"}
-            playerCount={state?.bets?.length}
+            activePlayers={activePlayers}
           />
           <div className="mt-2 flex gap-2 sm:mt-2.5 sm:gap-2.5 max-sm:flex-col">
             <BetSlip

@@ -1,21 +1,51 @@
 "use client";
 
 import { formatBp, formatPlayKes } from "@/components/ui/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { BetRow } from "@/components/play/types";
+import type { LivePresenceBet } from "@/components/play/useLivePlayerPresence";
 
 export function LiveBets({
   bets,
   meId,
   crashed,
+  activePlayers,
+  presenceBets,
 }: {
   bets: BetRow[];
   meId: string | null;
   crashed: boolean;
+  activePlayers: number;
+  presenceBets: LivePresenceBet[];
 }) {
   const [tab, setTab] = useState<"all" | "mine">("all");
-  const rows = tab === "mine" && meId ? bets.filter((b) => b.userId === meId) : bets;
-  const total = bets.reduce((sum, b) => sum + Number(b.stakeCredits || 0), 0);
+
+  const displayRows = useMemo(() => {
+    if (tab === "mine") {
+      return meId ? bets.filter((b) => b.userId === meId) : [];
+    }
+    const real = bets.map((b) => ({
+      id: b.id,
+      publicName: b.publicName,
+      stakeCredits: b.stakeCredits,
+      cashedOutAtBp: b.cashedOutAtBp,
+      payoutCredits: b.payoutCredits,
+      lost: crashed && b.cashedOutAtBp == null && b.status !== "CASHED_OUT",
+    }));
+    const presence = presenceBets.map((b) => ({
+      ...b,
+      lost: crashed && b.cashedOutAtBp == null,
+    }));
+    return [...real, ...presence].slice(0, 24);
+  }, [tab, meId, bets, presenceBets, crashed]);
+
+  const total =
+    tab === "mine"
+      ? displayRows.reduce((sum, b) => sum + Number(b.stakeCredits || 0), 0)
+      : Math.max(
+          bets.reduce((sum, b) => sum + Number(b.stakeCredits || 0), 0),
+          Math.round(activePlayers * 42),
+        );
 
   return (
     <aside className="flex h-full min-h-0 w-full flex-col border-[#2a2c34] bg-[#16171b] max-lg:border-t lg:w-[300px] lg:shrink-0 lg:border-r xl:w-[340px]">
@@ -39,7 +69,10 @@ export function LiveBets({
         ))}
       </div>
       <div className="flex items-center justify-between px-3.5 py-2 text-xs text-[#8b8e99]">
-        <span>{bets.length} players</span>
+        <span>
+          <b className="text-[#2fbf4e]">{tab === "mine" ? displayRows.length : activePlayers.toLocaleString("en-KE")}</b>{" "}
+          players
+        </span>
         <b className="text-sm text-[#f2f3f7]">{formatPlayKes(total)}</b>
       </div>
       <div className="mx-3.5 mb-2 h-1 overflow-hidden rounded bg-[#1d1e24]">
@@ -52,14 +85,13 @@ export function LiveBets({
         <span className="w-16 text-right">Win</span>
       </div>
       <ul className="min-h-0 flex-1 overflow-auto max-lg:max-h-[220px] sm:max-lg:max-h-[280px]">
-        {rows.map((b) => {
+        {displayRows.map((b) => {
           const won = b.cashedOutAtBp != null;
-          const lost = crashed && !won && b.status !== "CASHED_OUT";
           return (
             <li
               key={b.id}
               className={`flex items-center border-b border-white/[0.03] px-3.5 py-1.5 text-xs ${
-                won ? "bg-[rgba(47,191,78,.08)]" : lost ? "text-[#8b8e99]" : ""
+                won ? "bg-[rgba(47,191,78,.08)]" : b.lost ? "text-[#8b8e99]" : ""
               }`}
             >
               <span className="flex flex-1 items-center gap-1.5 truncate text-[#8b8e99]">
@@ -78,8 +110,10 @@ export function LiveBets({
             </li>
           );
         })}
-        {rows.length === 0 ? (
-          <li className="px-3 py-10 text-center text-xs text-[#8b8e99]">No bets this round.</li>
+        {displayRows.length === 0 ? (
+          <li className="px-3 py-10 text-center text-xs text-[#8b8e99]">
+            {tab === "mine" ? "No bets from you this round." : "No bets this round."}
+          </li>
         ) : null}
       </ul>
     </aside>

@@ -86,7 +86,7 @@ export function FlightStage({
   bettingClosesAt,
   connected,
   freePlay,
-  playerCount,
+  activePlayers = 0,
 }: {
   status: string | undefined;
   displayBp: number;
@@ -95,23 +95,11 @@ export function FlightStage({
   bettingClosesAt?: string;
   connected: boolean;
   freePlay?: boolean;
-  playerCount?: number;
+  activePlayers?: number;
 }) {
-  const [activePlayers, setActivePlayers] = useState(120);
   const crashed = status === "CRASHED" || status === "SETTLED";
   const flying = status === "RUNNING";
   const waiting = status === "BETTING_OPEN" || status === "SCHEDULED" || status === "BETTING_CLOSED";
-
-  useEffect(() => {
-    setActivePlayers((current) => Math.max(100, current, playerCount ?? 0));
-  }, [playerCount]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setActivePlayers((current) => Math.max(100, current + Math.floor(Math.random() * 11) - 5));
-    }, 3000);
-    return () => window.clearInterval(interval);
-  }, []);
 
   const ceiling = Math.max(displayBp, 220);
   const path = useMemo(() => samplePath(Math.max(100, displayBp), ceiling), [displayBp, ceiling]);
@@ -221,8 +209,9 @@ export function FlightStage({
         <span className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-emerald-400" : "bg-white/30"}`} />
         {connected ? "Network" : "Reconnecting"}
       </div>
-      <div className="absolute bottom-3 right-4 z-[6] flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-1 text-xs text-white/45">
-        {activePlayers} playing
+      <div className="absolute bottom-3 right-4 z-[6] flex items-center gap-1.5 rounded-full border border-[rgba(47,191,78,.35)] bg-[rgba(47,191,78,.12)] px-2.5 py-1 text-xs font-bold text-[#2fbf4e]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#2fbf4e] shadow-[0_0_8px_#2fbf4e]" />
+        {activePlayers.toLocaleString("en-KE")} playing
       </div>
     </div>
   );
