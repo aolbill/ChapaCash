@@ -58,17 +58,34 @@ export function useLivePlayerPresence(realBetCount = 0) {
   }, [realBetCount]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setActivePlayers((current) => Math.max(100, current + Math.floor(Math.random() * 11) - 5));
+    const tickCount = () => {
+      setActivePlayers((current) => {
+        const delta = Math.floor(Math.random() * 15) - 7; // -7 … +7
+        const next = current + (delta === 0 ? (Math.random() > 0.5 ? 1 : -1) : delta);
+        return Math.min(280, Math.max(100, next, realBetCount));
+      });
+    };
+
+    const tickRows = () => {
       setPresenceBets((rows) => {
         const next = [...rows];
-        const idx = Math.floor(Math.random() * next.length);
-        next[idx] = makeRow(idx);
+        const swaps = 1 + Math.floor(Math.random() * 3);
+        for (let s = 0; s < swaps; s++) {
+          const idx = Math.floor(Math.random() * next.length);
+          next[idx] = makeRow(idx + Math.floor(Math.random() * NAMES.length));
+        }
         return next;
       });
-    }, 3000);
-    return () => window.clearInterval(interval);
-  }, []);
+    };
+
+    tickCount();
+    const countId = window.setInterval(tickCount, 900);
+    const rowsId = window.setInterval(tickRows, 1400);
+    return () => {
+      window.clearInterval(countId);
+      window.clearInterval(rowsId);
+    };
+  }, [realBetCount]);
 
   return { activePlayers, presenceBets };
 }
