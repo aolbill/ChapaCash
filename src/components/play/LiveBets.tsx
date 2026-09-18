@@ -75,7 +75,7 @@ export function LiveBets({
       mine: false,
     }));
     // Own bets first so the logged-in player always sees their stakes tracked.
-    return [...mine, ...others, ...presence].slice(0, 24);
+    return [...mine, ...others, ...presence];
   }, [hydrated, tab, meId, trackedBets, presenceBets, crashed]);
 
   const myBetCount = meId ? trackedBets.filter((b) => b.userId === meId).length : 0;
@@ -96,8 +96,8 @@ export function LiveBets({
       : activePlayers.toLocaleString("en-KE");
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col border-[#2a2c34] bg-[#16171b] max-lg:border-t lg:w-[300px] lg:shrink-0 lg:border-r xl:w-[340px]">
-      <div className="flex gap-1 p-2">
+    <aside className="flex h-full min-h-0 w-full flex-col border-[#2a2c34] bg-[#16171b] max-lg:min-h-[min(52dvh,440px)] max-lg:border-t lg:w-[300px] lg:shrink-0 lg:border-r xl:w-[340px]">
+      <div className="flex shrink-0 gap-1 p-2">
         {(
           [
             ["all", "All Bets"],
@@ -119,28 +119,31 @@ export function LiveBets({
           </button>
         ))}
       </div>
-      <div className="flex items-center justify-between px-3.5 py-2 text-xs text-[#8b8e99]">
+      <div className="flex shrink-0 items-center justify-between px-3.5 py-2 text-xs text-[#8b8e99]">
         <span>
           <b className="text-[#2fbf4e]">{playerLabel}</b> {tab === "mine" ? "your bets" : "players"}
         </span>
         <b className="text-sm text-[#f2f3f7]">{formatPlayKes(total)}</b>
       </div>
-      <div className="mx-3.5 mb-2 h-1 overflow-hidden rounded bg-[#1d1e24]">
+      <div className="mx-3.5 mb-2 h-1 shrink-0 overflow-hidden rounded bg-[#1d1e24]">
         <i className="block h-full w-[62%] rounded bg-[#2fbf4e]" />
       </div>
-      <div className="flex border-b border-[#2a2c34] px-3.5 py-1.5 text-[10px] text-[#8b8e99]">
+      <div className="flex shrink-0 border-b border-[#2a2c34] bg-[#16171b] px-3.5 py-1.5 text-[10px] text-[#8b8e99]">
         <span className="flex-1">User</span>
         <span className="w-16 text-right">Bet</span>
         <span className="w-11 text-right">X</span>
         <span className="w-16 text-right">Win</span>
       </div>
-      <ul className="min-h-0 flex-1 overflow-auto max-lg:max-h-[220px] sm:max-lg:max-h-[280px]">
+      <ul
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] max-lg:max-h-[min(42dvh,360px)] lg:max-h-none"
+        aria-label={tab === "mine" ? "Your bets" : "All bets"}
+      >
         {displayRows.map((b) => {
           const won = b.cashedOutAtBp != null;
           return (
             <li
               key={`${tab}-${b.id}`}
-              className={`flex items-center border-b border-white/[0.03] px-3.5 py-1.5 text-xs ${
+              className={`flex items-center border-b border-white/[0.03] px-3.5 py-2 text-xs sm:py-1.5 ${
                 b.mine
                   ? "bg-[rgba(225,29,42,.12)]"
                   : won
@@ -178,6 +181,11 @@ export function LiveBets({
           </li>
         ) : null}
       </ul>
+      {displayRows.length > 6 ? (
+        <div className="pointer-events-none shrink-0 border-t border-[#2a2c34] bg-[#16171b] px-3.5 py-1.5 text-center text-[10px] text-[#8b8e99]">
+          Scroll to see all {displayRows.length} bets
+        </div>
+      ) : null}
     </aside>
   );
 }
