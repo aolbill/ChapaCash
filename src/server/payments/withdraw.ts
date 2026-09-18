@@ -14,7 +14,7 @@ import { writeAudit } from "@/server/admin/audit";
 import { logger } from "@/lib/logger";
 import { paystackPayoutsEnabled } from "@/lib/env";
 
-const MIN_KES = 50;
+const MIN_KES = 500;
 const MAX_KES = 150_000;
 
 export async function startMpesaWithdrawal(args: {

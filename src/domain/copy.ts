@@ -7,7 +7,7 @@ export const PAYSTACK_STARTER_PAYOUT_MESSAGE =
   "Paystack Starter businesses cannot send M-PESA to players. In Paystack, upgrade from Starter to a Registered business, enable Transfers, and turn off Transfer OTP. Your cash stays in the ChapaCash wallet until payouts are allowed.";
 
 export const WITHDRAWAL_CONFIRMATION =
-  "Your withdrawal is confirmed. You will receive the money on M-PESA within 2–3 business days.";
+  "Your withdrawal is confirmed. It will be processed within 3 to 4 days and sent to your M-PESA.";
 
 export const PLAY_MONEY_BANNER = SITE_BANNER;
 

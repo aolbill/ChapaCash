@@ -44,7 +44,11 @@ export const depositSchema = z.object({
 });
 
 export const withdrawSchema = z.object({
-  amountKes: z.number().int().min(50).max(150_000),
+  amountKes: z
+    .number()
+    .int()
+    .min(500, "Minimum withdrawal is 500 KES.")
+    .max(150_000),
   phone: z.string().optional(),
 });
 
