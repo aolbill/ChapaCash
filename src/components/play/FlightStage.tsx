@@ -56,8 +56,8 @@ function PlaneMark({ crashed }: { crashed: boolean }) {
 }
 
 /**
- * Smooth live multiplier: derived from round start + wall clock, not from stitching
- * server ticks (which caused visible reverse jumps when a late tick arrived).
+ * Smooth live multiplier from round start + wall clock.
+ * Peak is monotonic for the whole RUNNING phase — server samples never pull it down.
  */
 export function useLiveMultiplier(
   status: string | undefined,
@@ -65,44 +65,56 @@ export function useLiveMultiplier(
   runningStartedAt?: string | null,
   /** Live `Date.now() - serverNowMs`; read each frame so offset updates do not restart the loop. */
   serverOffsetRef?: { current: number },
+  roundId?: string | null,
 ) {
   const flying = status === "RUNNING";
-  const [displayBp, setDisplayBp] = useState(serverBp);
+  const [displayBp, setDisplayBp] = useState(() => Math.max(100, Math.floor(serverBp)));
+  /** Authoritative displayed bp while flying — never decreases until the round leaves RUNNING. */
   const peakRef = useRef(100);
-  const serverBpRef = useRef(serverBp);
-  serverBpRef.current = serverBp;
+  const roundIdRef = useRef(roundId);
 
   useEffect(() => {
-    if (!flying) {
+    if (roundIdRef.current !== roundId) {
+      roundIdRef.current = roundId;
       peakRef.current = 100;
-      setDisplayBp(serverBp);
     }
+  }, [roundId]);
+
+  useEffect(() => {
+    if (flying) return;
+    peakRef.current = 100;
+    setDisplayBp(Math.max(100, Math.floor(serverBp)));
   }, [flying, serverBp, status]);
 
   useEffect(() => {
     if (!flying) return;
     const startedMs = runningStartedAt ? Date.parse(runningStartedAt) : NaN;
+
+    const readElapsedBp = () => {
+      if (!Number.isFinite(startedMs)) return peakRef.current;
+      const offset = serverOffsetRef?.current ?? 0;
+      return bpFromElapsedMs(Math.max(0, Date.now() - offset - startedMs));
+    };
+
+    // Seed immediately so the first paint is not a stale/low server sample.
+    const seeded = Math.max(100, readElapsedBp());
+    peakRef.current = Math.max(peakRef.current, seeded);
+    setDisplayBp(peakRef.current);
+
     let raf = 0;
     const loop = () => {
-      let next: number;
-      if (Number.isFinite(startedMs)) {
-        const offset = serverOffsetRef?.current ?? 0;
-        const serverNow = Date.now() - offset;
-        next = bpFromElapsedMs(Math.max(0, serverNow - startedMs));
-      } else {
-        // No start time yet — climb from server samples only, never reverse.
-        next = Math.max(peakRef.current, serverBpRef.current);
+      const next = Math.max(peakRef.current, readElapsedBp());
+      if (next !== peakRef.current) {
+        peakRef.current = next;
+        setDisplayBp(next);
       }
-      next = Math.max(peakRef.current, next);
-      peakRef.current = next;
-      setDisplayBp(next);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [flying, runningStartedAt, serverOffsetRef, status]);
+  }, [flying, runningStartedAt, serverOffsetRef, status, roundId]);
 
-  return flying ? displayBp : serverBp;
+  return displayBp;
 }
 
 export function FlightStage({

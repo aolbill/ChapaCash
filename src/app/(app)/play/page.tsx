@@ -40,13 +40,26 @@ function mergePlayState(
   const roundChanged = round?.id !== prev?.round?.id;
   const bets = payload.bets ?? (roundChanged ? [] : prev?.bets) ?? [];
   const meId = cached?.id;
+  const incomingBp = payload.multiplierBp;
+  const prevBp = prev?.multiplierBp ?? null;
+  // While the same round is RUNNING, never let a stale snapshot pull the multiplier down.
+  const sameRunningRound =
+    !roundChanged &&
+    round?.status === "RUNNING" &&
+    prev?.round?.status === "RUNNING";
+  const multiplierBp =
+    typeof incomingBp === "number"
+      ? sameRunningRound && typeof prevBp === "number"
+        ? Math.max(prevBp, incomingBp)
+        : incomingBp
+      : (prevBp ?? null);
   return {
     cashCredits,
     promoCredits,
     hasDeposited,
     lifetimeDepositedKes: payload.lifetimeDepositedKes ?? prev?.lifetimeDepositedKes,
     serverNow: payload.serverNow ?? prev?.serverNow,
-    multiplierBp: payload.multiplierBp ?? prev?.multiplierBp ?? null,
+    multiplierBp,
     bets,
     myBets: meId ? bets.filter((b) => b.userId === meId) : (payload.myBets ?? (roundChanged ? [] : prev?.myBets) ?? []),
     round,
@@ -173,9 +186,22 @@ export default function PlayPage() {
         if (payload.type === "event") {
           const evType = payload.event?.type;
           if (evType === "TICK") {
-            const bp = payload.event?.payload?.multiplierBp;
-            if (typeof bp === "number") {
-              setState((prev) => (prev ? { ...prev, multiplierBp: bp } : prev));
+            const tick = payload.event?.payload as
+              | { multiplierBp?: number; elapsedMs?: number; publicCashout?: boolean; publicBet?: boolean }
+              | undefined;
+            // Flight ticks include elapsedMs. Cashout/bet notices must NOT overwrite the live multiplier
+            // (they carry the cashout point, e.g. 2.00x, which caused visible reverse jumps).
+            if (
+              typeof tick?.multiplierBp === "number" &&
+              typeof tick.elapsedMs === "number" &&
+              !tick.publicCashout &&
+              !tick.publicBet
+            ) {
+              setState((prev) => {
+                if (!prev) return prev;
+                const prevBp = prev.multiplierBp ?? 100;
+                return { ...prev, multiplierBp: Math.max(prevBp, tick.multiplierBp!) };
+              });
             }
             return;
           }
@@ -268,6 +294,7 @@ export default function PlayPage() {
     serverBp,
     state?.round?.runningStartedAt,
     serverOffsetRef,
+    state?.round?.id,
   );
   const { activePlayers, presenceBets } = useLivePlayerPresence(state?.bets?.length ?? 0);
 

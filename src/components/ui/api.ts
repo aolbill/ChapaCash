@@ -9,8 +9,10 @@ export class ApiHttpError extends Error {
 
 export function formatBp(bp: number | null | undefined): string {
   if (bp == null) return "—";
-  const whole = Math.floor(bp / 100);
-  const frac = String(bp % 100).padStart(2, "0");
+  const n = Math.max(100, Math.floor(Number(bp)));
+  if (!Number.isFinite(n)) return "—";
+  const whole = Math.floor(n / 100);
+  const frac = String(n % 100).padStart(2, "0");
   return `${whole}.${frac}x`;
 }
 
