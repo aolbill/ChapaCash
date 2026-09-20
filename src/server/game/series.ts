@@ -5,6 +5,7 @@ import {
   ALGORITHM_V1,
   commitServerSeed,
   deriveCrashMultiplierBp,
+  derivePromoCrashMultiplierBp,
   generateServerSeed,
   previewCrashSeries,
 } from "@/domain/fairness";
@@ -47,7 +48,7 @@ async function createSeriesDoc(serverSeed: string) {
 async function revealSeries(series: { _id: unknown; serverSeed: string; serverSeedHash: string }) {
   const revealed = await CrashSeries.findOneAndUpdate(
     { _id: series._id, status: "ACTIVE" },
-    { $set: { status: "REVEALED", revealedAt: new Date(), rotateRequested: false } },
+    { $set: { status: "REVEALED", revealedAt: new Date(), rotateRequested: false, pendingServerSeed: null } },
     { new: true },
   );
   if (!revealed) return;
@@ -57,11 +58,29 @@ async function revealSeries(series: { _id: unknown; serverSeed: string; serverSe
   );
 }
 
+/** Keep a single ACTIVE series — races used to leave two and desync admin preview from play. */
+export async function healDuplicateActiveSeries() {
+  await connectMongo();
+  const active = await CrashSeries.find({ status: "ACTIVE" }).sort({ createdAt: -1 }).lean();
+  if (active.length <= 1) return active[0] ?? null;
+  const live = await GameRound.findOne({ liveKey: "current" }).select("seriesId serverSeed").lean();
+  const keep =
+    active.find((s) => live?.seriesId && String(s._id) === live.seriesId) ??
+    active.find((s) => live?.serverSeed && s.serverSeed === live.serverSeed) ??
+    active[0];
+  await CrashSeries.updateMany(
+    { status: "ACTIVE", _id: { $ne: keep._id } },
+    { $set: { status: "REVEALED", revealedAt: new Date(), rotateRequested: false, pendingServerSeed: null } },
+  );
+  return keep;
+}
+
 export async function ensureActiveSeries() {
   await connectMongo();
-  let series = await CrashSeries.findOne({ status: "ACTIVE" });
+  await healDuplicateActiveSeries();
+  let series = await CrashSeries.findOne({ status: "ACTIVE" }).sort({ createdAt: -1 });
   if (series?.rotateRequested) {
-    const live = await GameRound.exists({ status: { $ne: "ARCHIVED" } });
+    const live = await GameRound.exists({ liveKey: "current" });
     if (!live) {
       const nextSeed = series.pendingServerSeed || generateServerSeed();
       await revealSeries(series);
@@ -84,39 +103,62 @@ export async function seriesIsRevealed(serverSeedHash: string): Promise<boolean>
 export async function getAdminSeriesPreview(count = 40) {
   await connectMongo();
   const series = await ensureActiveSeries();
-  const live = await GameRound.findOne({ status: { $ne: "ARCHIVED" } })
-    .sort({ roundNumber: 1 })
+  const live = await GameRound.findOne({ liveKey: "current" })
     .select("roundNumber status nonce serverSeed clientSeed algorithmVersion seriesId")
     .lean();
-  const liveUsesSeries = Boolean(live && live.seriesId === String(series._id));
-  const fromNonce = liveUsesSeries && live ? live.roundNumber : await nextRoundNumber();
   const limit = Math.min(PREVIEW_CAP, Math.max(1, count));
-  let upcoming = previewCrashSeries({
-    algorithmVersion: series.algorithmVersion,
-    serverSeed: series.serverSeed,
-    clientSeed: series.clientSeed,
+
+  /** Current chip always from the live round's seeds — same crash the engine uses for every player. */
+  const liveCrash = live
+    ? deriveCrashMultiplierBp({
+        algorithmVersion: live.algorithmVersion,
+        serverSeed: live.serverSeed,
+        clientSeed: live.clientSeed,
+        nonce: live.nonce,
+      })
+    : null;
+  const livePromo = live
+    ? derivePromoCrashMultiplierBp({
+        serverSeed: live.serverSeed,
+        clientSeed: live.clientSeed,
+        nonce: live.nonce,
+      })
+    : null;
+
+  const afterLiveUsesPending = Boolean(series.rotateRequested && series.pendingServerSeed && live);
+  const nextSeed = afterLiveUsesPending
+    ? (series.pendingServerSeed as string)
+    : live && live.serverSeed
+      ? live.serverSeed
+      : series.serverSeed;
+  const nextClient = live?.clientSeed ?? series.clientSeed;
+  const nextAlgo = live?.algorithmVersion ?? series.algorithmVersion;
+  const fromNonce = live ? live.roundNumber + 1 : await nextRoundNumber();
+
+  const rest = previewCrashSeries({
+    algorithmVersion: nextAlgo,
+    serverSeed: nextSeed,
+    clientSeed: nextClient,
     fromNonce,
-    count: limit,
+    count: live ? Math.max(0, limit - 1) : limit,
   }).map((point) => ({
     ...point,
     roundNumber: Number(point.nonce),
-    current: liveUsesSeries && live != null && Number(point.nonce) === live.roundNumber,
+    current: false,
   }));
 
-  if (series.rotateRequested && live && series.pendingServerSeed) {
-    const rest = previewCrashSeries({
-      algorithmVersion: series.algorithmVersion,
-      serverSeed: series.pendingServerSeed,
-      clientSeed: series.clientSeed,
-      fromNonce: live.roundNumber + 1,
-      count: Math.max(0, limit - 1),
-    }).map((point) => ({
-      ...point,
-      roundNumber: Number(point.nonce),
-      current: false,
-    }));
-    upcoming = [...upcoming.filter((p) => p.current), ...rest];
-  }
+  const upcoming = liveCrash
+    ? [
+        {
+          nonce: live!.nonce,
+          roundNumber: live!.roundNumber,
+          crashMultiplierBp: liveCrash.crashMultiplierBp,
+          promoCrashMultiplierBp: livePromo!.crashMultiplierBp,
+          current: true,
+        },
+        ...rest,
+      ]
+    : rest;
 
   return {
     series: {
@@ -135,12 +177,7 @@ export async function getAdminSeriesPreview(count = 40) {
           roundNumber: live.roundNumber,
           status: live.status,
           nonce: live.nonce,
-          crashMultiplierBp: deriveCrashMultiplierBp({
-            algorithmVersion: live.algorithmVersion,
-            serverSeed: live.serverSeed,
-            clientSeed: live.clientSeed,
-            nonce: live.nonce,
-          }).crashMultiplierBp,
+          crashMultiplierBp: liveCrash!.crashMultiplierBp,
         }
       : null,
     upcoming,
@@ -162,8 +199,8 @@ export async function requestSeriesRotate(args: {
   }
 
   const nextSeed = custom || generateServerSeed();
-  const live = await GameRound.exists({ status: { $ne: "ARCHIVED" } });
-  const current = await CrashSeries.findOne({ status: "ACTIVE" });
+  const live = await GameRound.exists({ liveKey: "current" });
+  const current = await CrashSeries.findOne({ status: "ACTIVE" }).sort({ createdAt: -1 });
 
   if (live && current) {
     await CrashSeries.updateOne(

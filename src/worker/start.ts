@@ -3,9 +3,10 @@ import { connectMongo } from "@/lib/mongo";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { tickEngine } from "@/server/game/service";
+import { healDuplicateActiveSeries } from "@/server/game/series";
 import { ensureSystemAccounts } from "@/server/ledger/service";
 import { reconcilePendingDeposits } from "@/server/payments/deposit";
-import { Bet, Cashout, Deposit, EngineLock, GameRound, LedgerEntry, Withdrawal } from "@/server/db/models";
+import { Bet, Cashout, CrashSeries, Deposit, EngineLock, GameRound, LedgerEntry, Withdrawal } from "@/server/db/models";
 
 const g = globalThis as unknown as {
   chapacashEngineTimer?: ReturnType<typeof setInterval>;
@@ -68,12 +69,17 @@ export function startEngine(): void {
       await ensureSystemAccounts();
       await Promise.all([
         GameRound.createIndexes(),
+        CrashSeries.createIndexes(),
         Bet.createIndexes(),
         Cashout.createIndexes(),
         LedgerEntry.createIndexes(),
         Deposit.createIndexes(),
         Withdrawal.createIndexes(),
       ]).catch((error) => logger.warn("index_ensure_failed", { err: String(error) }));
+      await healDuplicateActiveSeries().catch((error) =>
+        logger.warn("series_heal_failed", { err: String(error) }),
+      );
+      await tickEngine().catch((error) => logger.warn("engine_boot_tick_failed", { err: String(error) }));
     })();
 
     g.chapacashEngineTimer = setInterval(() => {

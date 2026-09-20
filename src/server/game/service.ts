@@ -19,16 +19,83 @@ import { writeAudit } from "@/server/admin/audit";
 import { metrics } from "@/lib/metrics";
 import { logger } from "@/lib/logger";
 import { Bet, Cashout, FairnessProof, GameRound, RoundEvent, User } from "@/server/db/models";
-import { ensureActiveSeries, seriesIsRevealed } from "@/server/game/series";
+import { ensureActiveSeries, healDuplicateActiveSeries, seriesIsRevealed } from "@/server/game/series";
 
 function growth(): string {
   return env.GROWTH_PER_SECOND;
 }
 
 const liveSeq = new Map<string, number>();
+let lastHealAt = 0;
+
+const LIVE_STATUS_SCORE: Record<string, number> = {
+  RUNNING: 60,
+  BETTING_CLOSED: 50,
+  BETTING_OPEN: 40,
+  CRASHED: 30,
+  SETTLED: 20,
+  SCHEDULED: 10,
+};
 
 function findActiveRound() {
-  return GameRound.findOne({ status: { $ne: "ARCHIVED" } }).sort({ roundNumber: 1 });
+  return GameRound.findOne({ liveKey: "current" });
+}
+
+/** One live round only — orphans made admin preview diverge from what players saw. */
+async function healLiveRoundInvariant(force = false): Promise<void> {
+  const now = Date.now();
+  if (!force && now - lastHealAt < 2_000) return;
+  lastHealAt = now;
+
+  await healDuplicateActiveSeries();
+  const openCount = await GameRound.countDocuments({ status: { $ne: "ARCHIVED" } });
+  if (openCount <= 1) {
+    const only = await GameRound.findOne({ status: { $ne: "ARCHIVED" } }).select("_id liveKey").lean();
+    if (only && only.liveKey !== "current") {
+      await GameRound.updateOne({ _id: only._id }, { $set: { liveKey: "current" } }).catch(() => undefined);
+    }
+    return;
+  }
+
+  const open = await GameRound.find({ status: { $ne: "ARCHIVED" } })
+    .sort({ roundNumber: -1 })
+    .select("_id roundNumber status liveKey")
+    .lean();
+  if (open.length === 0) return;
+
+  let keep =
+    open.find((r) => r.liveKey === "current") ??
+    open.slice().sort((a, b) => {
+      const score = (LIVE_STATUS_SCORE[b.status] ?? 0) - (LIVE_STATUS_SCORE[a.status] ?? 0);
+      return score !== 0 ? score : b.roundNumber - a.roundNumber;
+    })[0];
+
+  if (!keep) return;
+
+  if (keep.liveKey !== "current") {
+    await GameRound.updateMany({ liveKey: "current", _id: { $ne: keep._id } }, { $unset: { liveKey: 1 } });
+    try {
+      await GameRound.updateOne({ _id: keep._id }, { $set: { liveKey: "current" } });
+    } catch (error: unknown) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+      const existing = await GameRound.findOne({ liveKey: "current" }).select("_id").lean();
+      if (existing) keep = open.find((r) => String(r._id) === String(existing._id)) ?? keep;
+    }
+  }
+
+  const keepId = String(keep._id);
+  const orphans = open.filter((r) => String(r._id) !== keepId);
+  if (orphans.length === 0) return;
+
+  const orphanIds = orphans.map((r) => r._id);
+  await GameRound.updateMany(
+    { _id: { $in: orphanIds }, status: { $in: ["SCHEDULED", "BETTING_OPEN", "BETTING_CLOSED", "RUNNING"] } },
+    { $set: { status: "ARCHIVED", archivedAt: new Date() }, $unset: { liveKey: 1 } },
+  );
+  logger.warn("live_round_orphans_archived", {
+    keep: keepId,
+    archived: orphans.length,
+  });
 }
 
 function promoCrashBpFor(round: {
@@ -92,6 +159,8 @@ async function emit(
 
 export async function createScheduledRound(): Promise<void> {
   await connectMongo();
+  await healLiveRoundInvariant(true);
+  if (await GameRound.exists({ liveKey: "current" })) return;
   if (await GameRound.exists({ status: { $ne: "ARCHIVED" } })) return;
   const last = await GameRound.findOne().sort({ roundNumber: -1 });
   const roundNumber = (last?.roundNumber ?? 0) + 1;
@@ -128,6 +197,7 @@ export async function createScheduledRound(): Promise<void> {
 
 export async function tickEngine(now = new Date()): Promise<void> {
   await connectMongo();
+  await healLiveRoundInvariant();
   const latest = await findActiveRound();
   if (!latest) {
     await createScheduledRound();
@@ -569,9 +639,7 @@ export async function publicRoundState() {
 
 async function loadPublicRoundState() {
   await connectMongo();
-  const round = await GameRound.findOne({ status: { $ne: "ARCHIVED" } })
-    .sort({ roundNumber: 1 })
-    .lean();
+  const round = await GameRound.findOne({ liveKey: "current" }).lean();
   if (!round) {
     return { serverNow: new Date().toISOString(), round: null, bets: [], multiplierBp: null as number | null };
   }
@@ -610,8 +678,9 @@ async function loadPublicRoundState() {
       status: round.status,
       serverSeedHash: round.serverSeedHash,
       algorithmVersion: round.algorithmVersion,
-      clientSeed: round.clientSeed,
-      nonce: round.nonce,
+      // Nonce/clientSeed only after crash — prevents reconstructing the admin sequence early.
+      clientSeed: revealed ? round.clientSeed : null,
+      nonce: revealed ? round.nonce : null,
       bettingOpensAt: round.bettingOpensAt.toISOString(),
       bettingClosesAt: round.bettingClosesAt.toISOString(),
       runningStartedAt: round.runningStartedAt?.toISOString() ?? null,

@@ -137,7 +137,8 @@ export default function AdminSeriesPage() {
           <section>
             <h2 className="section-title">Upcoming crashes</h2>
             <p className="mt-1 text-xs text-brand-muted">
-              Cash play. Free-credit rounds use a gentler curve.
+              Same crash every player sees in real time. Only admins see this list.
+              Free-credit settlements can auto-cash at the public crash on a gentler curve.
               {data.series.rotateRequested ? " After the live round, chips switch to the next series." : ""}
             </p>
             {data.upcoming.length === 0 ? (
