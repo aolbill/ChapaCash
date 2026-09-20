@@ -70,7 +70,8 @@ export function DepositPanel({ onCredited }: { onCredited?: (cashCredits: string
       <div>
         <h2 className="section-title text-base">Deposit with M-PESA</h2>
         <p className="mt-1 text-sm leading-relaxed text-brand-muted">
-          STK push to your Safaricom number. Credited cash is what you stake on real bets.
+          STK push to your Safaricom number. Enter PIN on the phone. Cash is credited after Paystack
+          confirms — usually within a few seconds.
         </p>
       </div>
       <label className="label">

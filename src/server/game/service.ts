@@ -225,14 +225,21 @@ export async function settleRound(roundId: string): Promise<void> {
       const survives = kind === "PROMO" && promoCrash > publicCrash;
       if (survives) {
         const payout = payoutCredits(BigInt(bet.stakeCredits), publicCrash);
-        const cashout = await Cashout.create({
-          betId: String(bet._id),
-          userId: bet.userId,
-          multiplierBp: publicCrash,
-          payoutCredits: payout.toString(),
-          idempotencyKey: `promo-survive:${String(bet._id)}`,
-          acceptedSeq: round.lastSequence,
-        });
+        const cashout = await Cashout.findOneAndUpdate(
+          { betId: String(bet._id) },
+          {
+            $setOnInsert: {
+              betId: String(bet._id),
+              userId: bet.userId,
+              multiplierBp: publicCrash,
+              payoutCredits: payout.toString(),
+              idempotencyKey: `promo-survive:${String(bet._id)}`,
+              acceptedSeq: round.lastSequence,
+            },
+          },
+          { upsert: true, new: true },
+        );
+        if (!cashout) continue;
         const entry = await postLedger({
           type: "CASH_OUT_PAYOUT",
           requestId: `promo-survive:${String(bet._id)}`,
@@ -279,7 +286,8 @@ export async function settleRound(roundId: string): Promise<void> {
     } catch (error) {
       metrics.inc("settlement_failures");
       logger.error("settlement_bet_failed", { betId: String(bet._id), err: String(error) });
-      throw error;
+      const dup = (error as { code?: number }).code === 11000;
+      if (!dup) throw error;
     }
   }
 

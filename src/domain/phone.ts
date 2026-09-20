@@ -53,3 +53,15 @@ export function looksLikePhone(raw: string): boolean {
 export function placeholderEmail(phone: string): string {
   return `${phone}@phone.chapacash.local`;
 }
+
+/** Paystack /charge rejects .local / .test and synthetic phone emails. */
+export function emailForPaystackCharge(email: string | null | undefined, phoneE164: string): string {
+  const e = (email ?? "").trim().toLowerCase();
+  const looksReal =
+    /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(e) &&
+    !e.endsWith(".local") &&
+    !e.endsWith(".test") &&
+    !e.includes("@phone.chapacash");
+  if (looksReal) return e;
+  return `${phoneE164}@deposits.chapacash.co.ke`;
+}

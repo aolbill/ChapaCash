@@ -58,10 +58,24 @@ async function paystack<T extends PaystackJson>(path: string, init?: RequestInit
   });
   const json = (await res.json()) as T;
   if (!res.ok || json.status === false) {
-    logger.warn("paystack_error", { path, message: json.message });
+    logger.warn("paystack_error", { path, detail: json.message });
     throw paystackApiError(path, json.message);
   }
   return json;
+}
+
+function chargeCallbackUrl(): string | undefined {
+  const raw = env.PAYSTACK_CALLBACK_URL?.trim();
+  if (!raw) return undefined;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return undefined;
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return undefined;
+    if (u.hostname.includes("fidel-castro-portfolio")) return undefined;
+    return raw;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function chargeMpesaStk(args: {
@@ -70,18 +84,20 @@ export async function chargeMpesaStk(args: {
   phoneE164: string;
   reference: string;
 }): Promise<{ reference: string; status: string; displayText: string }> {
-  const body = {
+  const phone = args.phoneE164.startsWith("+") ? args.phoneE164 : `+${args.phoneE164}`;
+  const body: Record<string, unknown> = {
     email: args.email,
     amount: args.amountKes * 100,
     currency: env.PAYSTACK_CURRENCY,
     reference: args.reference,
-    callback_url: env.PAYSTACK_CALLBACK_URL,
     mobile_money: {
-      phone: args.phoneE164,
+      phone,
       provider: env.PAYSTACK_MPESA_PROVIDER,
     },
     metadata: { product: "chapacash-deposit" },
   };
+  const callback = chargeCallbackUrl();
+  if (callback) body.callback_url = callback;
   const json = await paystack("/charge", { method: "POST", body: JSON.stringify(body) });
   return {
     reference: json.data?.reference ?? args.reference,

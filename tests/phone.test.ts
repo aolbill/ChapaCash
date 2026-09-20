@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeKenyaPhone, looksLikePhone, kenyaNationalFromStored } from "@/domain/phone";
+import { normalizeKenyaPhone, looksLikePhone, kenyaNationalFromStored, emailForPaystackCharge } from "@/domain/phone";
 
 describe("kenya phone", () => {
   it("normalizes 07, 7, and 254 forms", () => {
@@ -26,5 +26,15 @@ describe("kenya phone", () => {
     expect(looksLikePhone("0712345678")).toBe(true);
     expect(looksLikePhone("0112345678")).toBe(true);
     expect(looksLikePhone("a@b.co")).toBe(false);
+  });
+
+  it("builds a Paystack-safe charge email", () => {
+    expect(emailForPaystackCharge("you@gmail.com", "254712345678")).toBe("you@gmail.com");
+    expect(emailForPaystackCharge("254712345678@phone.chapacash.local", "254712345678")).toBe(
+      "254712345678@deposits.chapacash.co.ke",
+    );
+    expect(emailForPaystackCharge("player@chapacash.test", "254712345678")).toBe(
+      "254712345678@deposits.chapacash.co.ke",
+    );
   });
 });

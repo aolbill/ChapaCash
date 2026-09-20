@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { connectMongo } from "@/lib/mongo";
 import { ApiError } from "@/domain/errors";
 import { depositPostings } from "@/domain/ledger";
-import { normalizeKenyaPhone, phoneForPaystack } from "@/domain/phone";
+import { normalizeKenyaPhone, phoneForPaystack, emailForPaystackCharge } from "@/domain/phone";
 import { postLedger } from "@/server/ledger/service";
 import { Deposit, User } from "@/server/db/models";
 import { chargeMpesaStk, kesFromPaystackAmount, verifyTransaction } from "@/server/payments/paystack";
@@ -25,7 +25,7 @@ export async function startMpesaDeposit(args: {
   const user = await User.findById(args.userId);
   if (!user) throw new ApiError("not_found", 404, "User not found.");
   const phone = normalizeKenyaPhone(args.phoneRaw || user.phone || "");
-  const email = user.email || `${phone}@phone.chapacash.local`;
+  const email = emailForPaystackCharge(user.email, phone);
   const reference = `dep_${randomBytes(12).toString("hex")}`;
 
   const deposit = await Deposit.create({

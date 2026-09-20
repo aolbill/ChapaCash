@@ -301,7 +301,7 @@ export default function PlayPage() {
       </div>
       <HistoryStrip rounds={history} />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-        <div className="order-3 flex min-h-0 w-full max-lg:min-h-[min(52dvh,440px)] lg:order-1 lg:h-auto lg:self-stretch">
+        <div className="order-3 flex min-h-0 w-full max-lg:min-h-[min(52dvh,440px)] lg:order-1 lg:h-auto lg:w-[300px] lg:shrink-0 lg:self-stretch xl:w-[340px]">
           <LiveBets
             bets={state?.bets ?? []}
             myBets={myBets}
@@ -311,7 +311,7 @@ export default function PlayPage() {
             presenceBets={presenceBets}
           />
         </div>
-        <div className="order-1 flex min-w-0 flex-1 flex-col p-2 sm:p-2.5 lg:order-2 lg:min-h-0 lg:overflow-y-auto">
+        <div className="order-1 flex min-w-0 flex-1 flex-col p-2 sm:p-2.5 lg:order-2 lg:min-h-0 lg:min-w-0 lg:overflow-hidden">
           <FlightStage
             status={state?.round?.status}
             displayBp={displayBp}
@@ -322,7 +322,7 @@ export default function PlayPage() {
             freePlay={resolvedKind === "PROMO"}
             activePlayers={activePlayers}
           />
-          <div className="mt-2 flex gap-2 sm:mt-2.5 sm:gap-2.5 max-sm:flex-col">
+          <div className="mt-2 flex shrink-0 gap-2 sm:mt-2.5 sm:gap-2.5 max-sm:flex-col">
             <BetSlip
               slotIndex={0}
               stake={stake0}

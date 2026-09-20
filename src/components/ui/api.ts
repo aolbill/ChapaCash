@@ -27,12 +27,17 @@ export function formatPlayKes(value: string | number | null | undefined): string
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    cache: "no-store",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      ...init,
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    });
+  } catch {
+    throw new ApiHttpError("Could not reach the server. Refresh the page.", 0);
+  }
   const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
   if (!res.ok) {
     throw new ApiHttpError(data?.error?.message ?? "Request failed", res.status);
