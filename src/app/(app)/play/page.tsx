@@ -263,7 +263,12 @@ export default function PlayPage() {
 
   const crashed = state?.round?.status === "CRASHED" || state?.round?.status === "SETTLED";
   const serverBp = crashed ? (state?.round?.crashMultiplierBp ?? 100) : (state?.multiplierBp ?? 100);
-  const displayBp = useLiveMultiplier(state?.round?.status, serverBp);
+  const displayBp = useLiveMultiplier(
+    state?.round?.status,
+    serverBp,
+    state?.round?.runningStartedAt,
+    serverOffsetRef,
+  );
   const { activePlayers, presenceBets } = useLivePlayerPresence(state?.bets?.length ?? 0);
 
   return (
