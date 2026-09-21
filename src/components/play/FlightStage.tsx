@@ -182,7 +182,7 @@ export function FlightStage({
               </span>
             </div>
             <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/55">
-              {status === "BETTING_CLOSED"
+              {status === "BETTING_CLOSED" || countdown === 0
                 ? "Starting"
                 : status === "BETTING_OPEN"
                   ? "Place your bets"

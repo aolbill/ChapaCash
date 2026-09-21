@@ -78,7 +78,6 @@ export default function PlayPage() {
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null);
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [now, setNow] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryRound[]>([]);
 
   const closeAuth = useCallback(() => setAuthMode(null), []);
@@ -92,26 +91,96 @@ export default function PlayPage() {
   }, []);
 
   const refreshGen = useRef(0);
-  const serverOffsetRef = useRef(0);
+  /** Monotonic sync: when we last learned server time, and what that server time was. */
+  const clockSyncRef = useRef<{ serverMs: number; localMs: number } | null>(null);
+  /** Local deadline (performance.now) for betting close, derived from server remaining time. */
+  const closesAtLocalRef = useRef<number | null>(null);
+  /** Smoothed one-way latency estimate (ms) so countdown isn't behind the wire. */
+  const latencyRef = useRef(800);
+  const roundDeadlineKeyRef = useRef<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const applyServerNow = useCallback((iso: string | undefined) => {
     if (!iso) return;
-    const t = Date.parse(iso);
-    if (Number.isFinite(t)) serverOffsetRef.current = Date.now() - t;
+    const serverMs = Date.parse(iso);
+    if (!Number.isFinite(serverMs)) return;
+    // Advance by estimated one-way delay: serverNow is already stale when it arrives.
+    clockSyncRef.current = {
+      serverMs: serverMs + latencyRef.current,
+      localMs: performance.now(),
+    };
   }, []);
+
+  const syncBettingDeadline = useCallback(
+    (bettingClosesAt: string | undefined, serverNowIso?: string, roundKey?: string | null) => {
+      if (serverNowIso) applyServerNow(serverNowIso);
+      if (!bettingClosesAt) {
+        closesAtLocalRef.current = null;
+        return;
+      }
+      const closesMs = Date.parse(bettingClosesAt);
+      if (!Number.isFinite(closesMs)) {
+        closesAtLocalRef.current = null;
+        return;
+      }
+      const sync = clockSyncRef.current;
+      const serverNow = sync ? sync.serverMs + (performance.now() - sync.localMs) : Date.now();
+      const remaining = closesMs - serverNow;
+      const nextDeadline = performance.now() + remaining;
+      const key = roundKey ?? roundDeadlineKeyRef.current;
+      const isNewRound = key != null && key !== roundDeadlineKeyRef.current;
+      if (key) roundDeadlineKeyRef.current = key;
+      // Ratchet earlier only (same round) so delayed snapshots can't push the timer back.
+      if (
+        isNewRound ||
+        closesAtLocalRef.current == null ||
+        nextDeadline < closesAtLocalRef.current - 50
+      ) {
+        closesAtLocalRef.current = nextDeadline;
+      }
+    },
+    [applyServerNow],
+  );
 
   const refresh = useCallback(async () => {
     const gen = ++refreshGen.current;
+    const t0 = performance.now();
     const data = await api<RoundStatePayload>("/api/game/state");
+    const rtt = performance.now() - t0;
+    // EMA of one-way latency; clamp so a slow request doesn't over-correct.
+    const oneWay = Math.min(3500, Math.max(120, rtt / 2));
+    latencyRef.current = latencyRef.current * 0.7 + oneWay * 0.3;
     if (gen !== refreshGen.current) return;
     applyServerNow(data.serverNow);
     applyPlayState(data, setState);
-  }, [applyServerNow]);
+    syncBettingDeadline(
+      data.round?.bettingClosesAt,
+      data.serverNow,
+      data.round ? `${data.round.id}:${data.round.bettingClosesAt}` : null,
+    );
+  }, [applyServerNow, syncBettingDeadline]);
 
+  // Smooth countdown from the last server-synced remaining time.
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, []);
+    const tick = () => {
+      const status = state?.round?.status;
+      if (status !== "BETTING_OPEN" && status !== "SCHEDULED") {
+        setCountdown(null);
+        return;
+      }
+      const deadline = closesAtLocalRef.current;
+      if (deadline == null) {
+        setCountdown(null);
+        return;
+      }
+      const ms = deadline - performance.now();
+      // floor reads slightly ahead of ceil — closer to when bets actually close.
+      setCountdown(Math.max(0, Math.floor((ms + 50) / 1000)));
+    };
+    tick();
+    const id = window.setInterval(tick, 50);
+    return () => window.clearInterval(id);
+  }, [state?.round?.status, state?.round?.bettingClosesAt, state?.round?.id]);
 
   useEffect(() => {
     if (me && authMode) setAuthMode(null);
@@ -160,24 +229,78 @@ export default function PlayPage() {
           cashCredits?: string;
           promoCredits?: string;
           hasDeposited?: boolean;
-          event?: { type?: string; payload?: { multiplierBp?: number } };
+          event?: {
+            type?: string;
+            ts?: string;
+            roundId?: string;
+            payload?: {
+              multiplierBp?: number;
+              bettingClosesAt?: string;
+              bettingOpensAt?: string;
+              runningStartedAt?: string;
+              crashMultiplierBp?: number;
+            };
+          };
         } & Partial<RoundStatePayload>;
         if (payload.type === "snapshot" || payload.type === "state") {
           if (fallback) {
             window.clearTimeout(fallback);
             fallback = undefined;
           }
+          const roundKey = payload.round
+            ? `${payload.round.id}:${payload.round.bettingClosesAt}`
+            : null;
           applyServerNow(payload.serverNow);
           applyPlayState(payload, setState);
+          syncBettingDeadline(payload.round?.bettingClosesAt, payload.serverNow, roundKey);
         }
         if (payload.type === "event") {
-          const evType = payload.event?.type;
+          const ev = payload.event;
+          const evType = ev?.type;
+          if (ev?.ts) applyServerNow(ev.ts);
+
           if (evType === "TICK") {
-            const bp = payload.event?.payload?.multiplierBp;
+            const bp = ev?.payload?.multiplierBp;
             if (typeof bp === "number") {
               setState((prev) => (prev ? { ...prev, multiplierBp: bp } : prev));
             }
             return;
+          }
+
+          // Apply same-round phase changes immediately so the timer/UI don't wait on HTTP refresh.
+          if (evType && ev?.payload) {
+            setState((prev) => {
+              if (!prev?.round) return prev;
+              if (ev.roundId && ev.roundId !== prev.round.id) return prev;
+              const p = ev.payload!;
+              const nextRound = { ...prev.round };
+              if (evType === "BETTING_OPEN") {
+                nextRound.status = "BETTING_OPEN";
+                if (typeof p.bettingClosesAt === "string") nextRound.bettingClosesAt = p.bettingClosesAt;
+              } else if (evType === "BETTING_CLOSED") {
+                nextRound.status = "BETTING_CLOSED";
+                closesAtLocalRef.current = performance.now();
+              } else if (evType === "RUNNING") {
+                nextRound.status = "RUNNING";
+                if (typeof p.runningStartedAt === "string") nextRound.runningStartedAt = p.runningStartedAt;
+                closesAtLocalRef.current = null;
+              } else if (evType === "CRASHED") {
+                nextRound.status = "CRASHED";
+                if (typeof p.crashMultiplierBp === "number") nextRound.crashMultiplierBp = p.crashMultiplierBp;
+              } else if (evType === "SETTLED") {
+                nextRound.status = "SETTLED";
+              } else {
+                return prev;
+              }
+              return { ...prev, round: nextRound };
+            });
+            if (evType === "BETTING_OPEN" && typeof ev.payload.bettingClosesAt === "string") {
+              const key = ev.roundId
+                ? `${ev.roundId}:${ev.payload.bettingClosesAt}`
+                : `open:${ev.payload.bettingClosesAt}`;
+              roundDeadlineKeyRef.current = null; // force accept the new window
+              syncBettingDeadline(ev.payload.bettingClosesAt, ev.ts, key);
+            }
           }
           void refresh();
         }
@@ -192,14 +315,18 @@ export default function PlayPage() {
       if (fallback) window.clearTimeout(fallback);
       es?.close();
     };
-  }, [refresh, me?.id, applyServerNow]);
+  }, [refresh, me?.id, applyServerNow, syncBettingDeadline]);
 
-  const countdown = useMemo(() => {
-    if (!state?.round || now == null) return null;
-    if (state.round.status !== "BETTING_OPEN" && state.round.status !== "SCHEDULED") return null;
-    const ms = new Date(state.round.bettingClosesAt).getTime() - (now - serverOffsetRef.current);
-    return Math.max(0, Math.ceil(ms / 1000));
-  }, [state, now]);
+  // Keep deadline aligned whenever round betting window changes from state snapshots.
+  useEffect(() => {
+    const status = state?.round?.status;
+    if (status === "BETTING_OPEN" || status === "SCHEDULED") {
+      const key = state?.round ? `${state.round.id}:${state.round.bettingClosesAt}` : null;
+      syncBettingDeadline(state?.round?.bettingClosesAt, state?.serverNow, key);
+    } else {
+      closesAtLocalRef.current = null;
+    }
+  }, [state?.round?.id, state?.round?.status, state?.round?.bettingClosesAt, state?.serverNow, syncBettingDeadline]);
 
   const cashCredits = state?.cashCredits ?? me?.cashCredits;
   const promoCredits = state?.promoCredits ?? me?.promoCredits;

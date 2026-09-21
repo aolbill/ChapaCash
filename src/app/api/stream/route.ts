@@ -46,7 +46,7 @@ export async function GET(req: Request) {
             const state = await publicRoundState();
             send({ type: "state", ...state });
           })();
-        }, 1000);
+        }, 400);
       },
       cancel() {
         unsubscribe?.();
